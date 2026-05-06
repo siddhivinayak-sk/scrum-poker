@@ -10,7 +10,7 @@ COPY client/package.json client/package-lock.json ./
 RUN npm ci
 
 # Copy shared types (client tsconfig resolves @shared/* to ../shared/*)
-COPY shared/ /app/shared/
+COPY shared/types.ts /app/shared/types.ts
 
 # Copy client source and build
 COPY client/ ./
@@ -25,7 +25,7 @@ FROM node:20-alpine AS server-build
 WORKDIR /app
 
 # Copy shared types (server tsconfig includes ../shared/**)
-COPY shared/ ./shared/
+COPY shared/types.ts ./shared/types.ts
 
 # Install server dependencies
 WORKDIR /app/server
