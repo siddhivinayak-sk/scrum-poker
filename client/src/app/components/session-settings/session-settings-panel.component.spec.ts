@@ -160,7 +160,7 @@ describe('SessionSettingsPanelComponent', () => {
   });
 
   describe('auto-reveal indicator', () => {
-    it('should show auto-reveal badge when auto-reveal is enabled', () => {
+    it('should render the gear icon button when auto-reveal is enabled', () => {
       const configWithAutoReveal: SessionConfiguration = {
         ...defaultConfig,
         autoReveal: true,
@@ -170,9 +170,8 @@ describe('SessionSettingsPanelComponent', () => {
       fixture.componentRef.setInput('isOwner', true);
       fixture.detectChanges();
 
-      const badge = fixture.nativeElement.querySelector('.auto-reveal-badge');
-      expect(badge).toBeTruthy();
-      expect(badge?.textContent).toContain('Auto-Reveal ON');
+      const toggleBtn = fixture.nativeElement.querySelector('.toggle-btn');
+      expect(toggleBtn).toBeTruthy();
     });
 
     it('should not show auto-reveal badge when auto-reveal is disabled', () => {
@@ -202,7 +201,7 @@ describe('SessionSettingsPanelComponent', () => {
 
       const toggleBtn = fixture.nativeElement.querySelector('.toggle-btn');
       expect(toggleBtn).toBeTruthy();
-      expect(toggleBtn?.textContent).toContain('Session Settings');
+      expect(toggleBtn?.textContent).toContain('⚙');
     });
 
     it('should show the settings panel when toggled open', () => {
