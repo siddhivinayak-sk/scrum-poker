@@ -1,0 +1,87 @@
+<div class="login-container" role="main">
+  <div class="login-card">
+    <h1 class="login-title">Scrum Poker</h1>
+    <p class="login-subtitle">
+      {{ isAnonymousMode ? 'Join as a guest' : 'Sign in to continue' }}
+    </p>
+
+    <div class="mode-toggle" role="tablist" aria-label="Login mode">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="!isAnonymousMode"
+        [class.active]="!isAnonymousMode"
+        (click)="!isAnonymousMode || toggleMode()"
+        aria-label="Login with username"
+      >
+        Login
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="isAnonymousMode"
+        [class.active]="isAnonymousMode"
+        (click)="isAnonymousMode || toggleMode()"
+        aria-label="Login anonymously"
+      >
+        Anonymous
+      </button>
+    </div>
+
+    @if (loginForm) {
+      <form
+        [formGroup]="loginForm"
+        (ngSubmit)="onSubmit()"
+        class="login-form"
+        aria-label="Login form"
+      >
+        <div class="form-field">
+          <label [for]="isAnonymousMode ? 'displayName' : 'username'">
+            {{ isAnonymousMode ? 'Display Name' : 'Username' }}
+          </label>
+          <input
+            [id]="isAnonymousMode ? 'displayName' : 'username'"
+            type="text"
+            formControlName="username"
+            [attr.aria-label]="isAnonymousMode ? 'Enter your display name' : 'Enter your username'"
+            [attr.aria-invalid]="usernameControl?.touched && usernameControl?.invalid"
+            [attr.aria-describedby]="usernameControl?.touched && usernameControl?.invalid ? 'username-error' : null"
+            [placeholder]="isAnonymousMode ? 'Enter display name' : 'Enter username'"
+            autocomplete="username"
+          />
+          @if (usernameControl?.touched && usernameControl?.invalid) {
+            <div
+              id="username-error"
+              class="error-message"
+              role="alert"
+              aria-live="polite"
+            >
+              {{ isAnonymousMode ? 'A display name is required.' : 'A username is required.' }}
+            </div>
+          }
+        </div>
+
+        @if (loginError) {
+          <div class="error-message server-error" role="alert" aria-live="assertive">
+            {{ loginError }}
+          </div>
+        }
+
+        <button
+          type="submit"
+          class="submit-btn"
+          [disabled]="isSubmitting"
+          [attr.aria-label]="isAnonymousMode ? 'Join anonymously' : 'Sign in'"
+          aria-busy="{{ isSubmitting }}"
+        >
+          @if (isSubmitting) {
+            <span class="spinner" aria-hidden="true"></span>
+            Signing in…
+          } @else {
+            {{ isAnonymousMode ? 'Join Session' : 'Sign In' }}
+          }
+        </button>
+      </form>
+    }
+  </div>
+</div>

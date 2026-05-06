@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrum-poker
+  labels:
+    app: scrum-poker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrum-poker
+  template:
+    metadata:
+      labels:
+        app: scrum-poker
+    spec:
+      containers:
+        - name: scrum-poker
+          image: siddhivinayaksk/scrum-pocker:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+            - name: BASE_PATH
+              value: "/scrum-poker"
+            - name: PRESERVE_PATH
+              value: "true"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrum-poker
+  labels:
+    app: scrum-poker
+spec:
+  type: ClusterIP # LoadBalancer
+  selector:
+    app: scrum-poker
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+      name: http

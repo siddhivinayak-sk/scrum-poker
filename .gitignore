@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+client/dist/
+server/dist/
+
+# Angular cache
+client/.angular/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+client/coverage/
+server/coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker
+.dockerignore
+
+# Misc
+*.tgz
+*.tar.gz

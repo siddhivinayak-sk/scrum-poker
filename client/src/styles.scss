@@ -1,0 +1,112 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* ===== Global CSS Custom Properties (Theme) ===== */
+:root {
+  /* Primary palette */
+  --color-primary: #667eea;
+  --color-primary-dark: #5a67d8;
+  --color-primary-light: #a3bffa;
+
+  /* Secondary palette */
+  --color-secondary: #764ba2;
+  --color-secondary-dark: #6b46a0;
+  --color-secondary-light: #b794f4;
+
+  /* Accent palette */
+  --color-accent: #f6ad55;
+  --color-accent-dark: #ed8936;
+  --color-accent-light: #fbd38d;
+
+  /* Background gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-page-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+
+  /* Surface colors (containers) */
+  --surface-card-deck: rgba(255, 255, 255, 0.95);
+  --surface-board: rgba(255, 255, 255, 0.9);
+  --surface-metrics: rgba(255, 255, 255, 0.92);
+  --surface-story: rgba(255, 255, 255, 0.95);
+  --surface-sidebar: rgba(255, 255, 255, 0.88);
+
+  /* Text colors */
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a5568;
+  --text-on-primary: #ffffff;
+
+  /* Toast colors */
+  --toast-error: #e53e3e;
+  --toast-warning: #dd6b20;
+  --toast-info: #3182ce;
+
+  /* Card value color scale (cool → warm) */
+  --card-color-0: #3182ce;
+  --card-color-1: #2b6cb0;
+  --card-color-2: #2f855a;
+  --card-color-3: #38a169;
+  --card-color-5: #d69e2e;
+  --card-color-8: #dd6b20;
+  --card-color-13: #e53e3e;
+  --card-color-21: #c53030;
+  --card-color-34: #b83280;
+  --card-color-55: #9b2c2c;
+  --card-color-89: #742a2a;
+
+  /* Special card accent colors */
+  --card-color-coffee: #b7791f;
+  --card-color-no-clue: #6b46c1;
+  --card-color-break: #2c7a7b;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-card-selected: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Global accessibility: ensure minimum 4.5:1 contrast ratio */
+body {
+  color: #1a1a2e;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Focus visible styles for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Ensure all interactive elements meet 44x44 minimum tap target */
+button,
+[role='button'],
+input[type='submit'],
+input[type='button'],
+a {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Skip link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: #1976d2;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 10000;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.skip-link:focus {
+  top: 0;
+}
