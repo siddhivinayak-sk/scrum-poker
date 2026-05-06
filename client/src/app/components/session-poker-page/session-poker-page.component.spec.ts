@@ -517,7 +517,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       fixture.detectChanges();
 
       const el = fixture.nativeElement as HTMLElement;
-      const qrPanel = el.querySelector('.session-poker-page__qr-panel');
+      const qrPanel = el.querySelector('.session-poker-page__qr-popup');
       expect(qrPanel).toBeNull();
     });
 
@@ -533,7 +533,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       fixture.detectChanges();
 
       const el = fixture.nativeElement as HTMLElement;
-      const qrPanel = el.querySelector('.session-poker-page__qr-panel');
+      const qrPanel = el.querySelector('.session-poker-page__qr-popup');
       expect(qrPanel).toBeTruthy();
     });
 

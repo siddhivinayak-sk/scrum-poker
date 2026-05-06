@@ -28,6 +28,13 @@ function createMockSessionState(overrides: Record<string, any> = {}) {
     metrics: signal<VotingMetrics | null>(null).asReadonly(),
     history: signal<HistoryEntry[]>([]).asReadonly(),
     currentUser: signal<User | null>(null).asReadonly(),
+    issueList: signal([]).asReadonly(),
+    sessionConfig: signal(null).asReadonly(),
+    hasRevealPermission: signal(false).asReadonly(),
+    hasIssuePermission: signal(false).asReadonly(),
+    votedUserIds: signal(new Set()).asReadonly(),
+    countdownActive: signal(false).asReadonly(),
+    votingSystemCards: signal([]).asReadonly(),
     ...overrides,
   };
 }

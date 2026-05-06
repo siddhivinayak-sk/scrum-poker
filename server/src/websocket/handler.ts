@@ -561,8 +561,9 @@ export function handleWebSocket(ws: WebSocket, request: IncomingMessage): void {
     participant = { ...user, role: 'moderator' };
   }
 
-  // Check display name uniqueness (skip for session owner reconnecting)
-  if (participant.id !== session.ownerId && session.hasDisplayName(participant.displayName)) {
+  // Check display name uniqueness (skip for session owner and for same user reconnecting/multi-tab)
+  const existingParticipant = session.getParticipants().find(p => p.id === participant.id);
+  if (!existingParticipant && participant.id !== session.ownerId && session.hasDisplayName(participant.displayName)) {
     ws.close(4009, 'Display name already in use in this session');
     return;
   }

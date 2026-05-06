@@ -56,17 +56,24 @@ if (fs.existsSync(clientPath)) {
 
 // Read and modify index.html with base href and runtime config
 const indexHtmlPath = path.join(clientPath, 'index.html');
-let indexHtml = fs.readFileSync(indexHtmlPath, 'utf-8');
+let indexHtml = '';
 const baseHref = PUBLIC_PATH ? PUBLIC_PATH + '/' : '/';
 
-// Replace <base href="/">
-indexHtml = indexHtml.replace(/<base\s+href="\/"\s*\/?>/i, `<base href="${baseHref}">`);
+if (fs.existsSync(indexHtmlPath)) {
+  indexHtml = fs.readFileSync(indexHtmlPath, 'utf-8');
 
-// Inject runtime config
-indexHtml = indexHtml.replace(
-  '</head>',
-  `<script>window.__BASE_PATH__ = '${PUBLIC_PATH}';</script></head>`
-);
+  // Replace <base href="/">
+  indexHtml = indexHtml.replace(/<base\s+href="\/"\s*\/?>/i, `<base href="${baseHref}">`);
+
+  // Inject runtime config
+  indexHtml = indexHtml.replace(
+    '</head>',
+    `<script>window.__BASE_PATH__ = '${PUBLIC_PATH}';</script></head>`
+  );
+} else {
+  console.warn(`Warning: index.html not found at ${indexHtmlPath}. SPA fallback will return 404.`);
+  indexHtml = '<html><body><h1>Client not built</h1><p>Run npm run build in the client directory.</p></body></html>';
+}
 
 // If PUBLIC_PATH is set, also rewrite all relative asset references to absolute paths.
 // This ensures assets load correctly even if <base href> is somehow not respected

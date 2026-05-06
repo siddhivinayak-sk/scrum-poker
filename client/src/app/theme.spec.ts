@@ -173,6 +173,13 @@ describe('Theme: PokerPageComponent DOM structure and themed sections', () => {
       metrics: signal(null).asReadonly(),
       history: signal([]).asReadonly(),
       currentUser: signal(null).asReadonly(),
+      issueList: signal([]).asReadonly(),
+      sessionConfig: signal(null).asReadonly(),
+      hasRevealPermission: signal(false).asReadonly(),
+      hasIssuePermission: signal(false).asReadonly(),
+      votedUserIds: signal(new Set()).asReadonly(),
+      countdownActive: signal(false).asReadonly(),
+      votingSystemCards: signal([]).asReadonly(),
     };
 
     const mockWsService = {

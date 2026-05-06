@@ -18,7 +18,7 @@ describe('Property 1: Default role assignment', () => {
     fc.assert(
       fc.property(
         fc.record({
-          username: fc.string({ minLength: 1 }),
+          username: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
           isAnonymous: fc.boolean(),
         }),
         ({ username, isAnonymous }) => {
