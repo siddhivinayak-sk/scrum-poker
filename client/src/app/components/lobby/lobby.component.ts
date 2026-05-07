@@ -32,8 +32,23 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
             </button>
           </div>
 
-          <!-- Join Existing Session -->
+          <!-- Create Retrospective Board -->
           <div class="lobby-card">
+            <h2 class="lobby-card__title">Create Retrospective Board</h2>
+            <p class="lobby-card__description">
+              Run a sprint retrospective with your team using customizable templates
+            </p>
+            <button
+              class="lobby-card__btn lobby-card__btn--primary"
+              (click)="createRetroBoard()"
+              aria-label="Create a retrospective board"
+            >
+              Create Retrospective Board
+            </button>
+          </div>
+
+          <!-- Join Existing Session -->
+          <div class="lobby-card lobby-card--full-width">
             <h2 class="lobby-card__title">Join Existing Session</h2>
             <p class="lobby-card__description">
               Enter a session ID or paste a session URL to join
@@ -119,6 +134,10 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1.5rem;
+      }
+
+      .lobby-card--full-width {
+        grid-column: 1 / -1;
       }
 
       @media (max-width: 600px) {
@@ -280,6 +299,10 @@ export class LobbyComponent {
     this.router.navigate(['/create-session']);
   }
 
+  createRetroBoard(): void {
+    this.router.navigate(['/retro/create']);
+  }
+
   joinSession(): void {
     const input = this.sessionInput.trim();
     if (!input) {
@@ -289,29 +312,76 @@ export class LobbyComponent {
 
     // Extract session ID from URL or use as-is
     let sessionId = input;
-    const sessionUrlMatch = input.match(/\/session\/([^/?#]+)/);
-    if (sessionUrlMatch) {
-      sessionId = sessionUrlMatch[1];
+    let isRetro = false;
+
+    // Check for retro URL pattern: /retro/SESSION_ID
+    const retroUrlMatch = input.match(/\/retro\/([^/?#]+)/);
+    if (retroUrlMatch) {
+      sessionId = retroUrlMatch[1];
+      isRetro = true;
+    } else {
+      // Check for poker URL pattern: /session/SESSION_ID
+      const sessionUrlMatch = input.match(/\/session\/([^/?#]+)/);
+      if (sessionUrlMatch) {
+        sessionId = sessionUrlMatch[1];
+      }
     }
 
     this.joinError.set(null);
     this.isJoining.set(true);
 
-    this.http
-      .get<{ exists: boolean }>(this.basePath.getApiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/exists`))
-      .subscribe({
-        next: (response) => {
-          this.isJoining.set(false);
-          if (response.exists) {
-            this.router.navigate(['/session', sessionId]);
-          } else {
-            this.joinError.set('Session not found. Please check the ID and try again.');
-          }
-        },
-        error: () => {
-          this.isJoining.set(false);
-          this.joinError.set('Failed to check session. Please try again.');
-        },
-      });
+    if (isRetro) {
+      // Check retro session
+      this.http
+        .get<{ exists: boolean }>(this.basePath.getApiUrl(`/api/retro/sessions/${encodeURIComponent(sessionId)}/exists`))
+        .subscribe({
+          next: (response) => {
+            this.isJoining.set(false);
+            if (response.exists) {
+              this.router.navigate(['/retro', sessionId]);
+            } else {
+              this.joinError.set('Session not found. Please check the ID and try again.');
+            }
+          },
+          error: () => {
+            this.isJoining.set(false);
+            this.joinError.set('Failed to check session. Please try again.');
+          },
+        });
+    } else {
+      // Check poker session first, then retro
+      this.http
+        .get<{ exists: boolean }>(this.basePath.getApiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/exists`))
+        .subscribe({
+          next: (response) => {
+            if (response.exists) {
+              this.isJoining.set(false);
+              this.router.navigate(['/session', sessionId]);
+            } else {
+              // Try retro session
+              this.http
+                .get<{ exists: boolean }>(this.basePath.getApiUrl(`/api/retro/sessions/${encodeURIComponent(sessionId)}/exists`))
+                .subscribe({
+                  next: (retroResponse) => {
+                    this.isJoining.set(false);
+                    if (retroResponse.exists) {
+                      this.router.navigate(['/retro', sessionId]);
+                    } else {
+                      this.joinError.set('Session not found. Please check the ID and try again.');
+                    }
+                  },
+                  error: () => {
+                    this.isJoining.set(false);
+                    this.joinError.set('Session not found. Please check the ID and try again.');
+                  },
+                });
+            }
+          },
+          error: () => {
+            this.isJoining.set(false);
+            this.joinError.set('Failed to check session. Please try again.');
+          },
+        });
+    }
   }
 }

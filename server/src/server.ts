@@ -6,12 +6,15 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { authRouter } from './routes/auth';
 import { sessionsRouter } from './routes/sessions';
+import { retroRouter } from './routes/retro-routes';
 import { sessionRegistry } from './services/session-registry';
 import { handleWebSocket, setWebSocketServer } from './websocket/handler';
+import { handleRetroWebSocket } from './websocket/retro-handler';
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
+const retroWss = new WebSocketServer({ noServer: true });
 
 // Handle WebSocket upgrade manually — this gives us control over the path
 // and lets us log upgrade attempts for debugging
@@ -19,10 +22,17 @@ server.on('upgrade', (request, socket, head) => {
   const reqUrl = request.url || '';
   console.log(`WebSocket upgrade request: ${reqUrl}`);
 
-  // Accept upgrade on any path — the ws handler validates token/session
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
-  });
+  if (reqUrl.startsWith('/retro')) {
+    // Route retro WebSocket connections to the retro handler
+    retroWss.handleUpgrade(request, socket, head, (ws) => {
+      retroWss.emit('connection', ws, request);
+    });
+  } else {
+    // All other paths go to the existing poker handler
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  }
 });
 
 /**
@@ -108,6 +118,7 @@ const appRouter = express.Router();
 // API routes on the sub-router
 appRouter.use('/api/auth', authRouter);
 appRouter.use('/api/sessions', sessionsRouter);
+appRouter.use('/api/retro', retroRouter);
 appRouter.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
@@ -136,9 +147,10 @@ if (preservePath && PUBLIC_PATH) {
   app.use('/', appRouter);
 }
 
-// Attach WebSocket server
+// Attach WebSocket servers
 setWebSocketServer(wss);
 wss.on('connection', handleWebSocket);
+retroWss.on('connection', handleRetroWebSocket);
 
 // Start server
 const PORT = process.env.PORT || 3000;
@@ -150,4 +162,4 @@ server.listen(PORT, () => {
   sessionRegistry.startCleanupTimer();
 });
 
-export { app, server, wss };
+export { app, server, wss, retroWss };
