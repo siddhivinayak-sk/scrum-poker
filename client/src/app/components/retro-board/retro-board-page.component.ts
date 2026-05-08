@@ -81,11 +81,9 @@ import { RetroUserMenuComponent } from './retro-user-menu.component';
             aria-label="Sprint context"
           />
         } @else {
-          @if (context()) {
-            <div class="retro-board__context-display" aria-label="Sprint context">
-              {{ context() }}
-            </div>
-          }
+          <div class="retro-board__context-display" aria-label="Sprint context">
+            {{ context() || 'No context set' }}
+          </div>
         }
       </div>
 
@@ -274,11 +272,6 @@ import { RetroUserMenuComponent } from './retro-user-menu.component';
       gap: 0.5rem;
       overflow-y: auto;
       overflow-x: hidden;
-    }
-
-    /* Ensure columns don't shrink in vertical layout */
-    .retro-board__columns--vertical > :host ::ng-deep app-retro-column {
-      flex-shrink: 0;
     }
 
     /* Scrollbar styling */

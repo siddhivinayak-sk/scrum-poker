@@ -1,4 +1,4 @@
-import { Component, input, inject, signal, computed } from '@angular/core';
+import { Component, input, inject, signal, computed, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RetroColumn } from '@shared/types';
 import { RetroWebSocketService } from '../../services/retro-websocket.service';
@@ -12,11 +12,10 @@ import { RetroCardComponent } from './retro-card.component';
   template: `
     <div
       class="retro-column"
-      [class.retro-column--drag-over]="isDragOverColumn()"
       [attr.data-column-id]="column().id"
-      (dragover)="onColumnDragOver($event)"
-      (dragleave)="onColumnDragLeave($event)"
-      (drop)="onColumnDrop($event)"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
     >
       <header
         class="retro-column__header"
@@ -36,52 +35,26 @@ import { RetroCardComponent } from './retro-card.component';
             aria-label="Add Card"
             (click)="onAddCard()"
             [disabled]="isCompleted()"
-          >
-            +
-          </button>
+          >+</button>
           <button
             class="retro-column__delete-btn"
             type="button"
             title="Delete Column"
             aria-label="Delete Column"
-            (click)="onDeleteColumn()"
+            (click)="showDeleteConfirm.set(true)"
             [disabled]="isCompleted()"
-          >
-            🗑️
-          </button>
+          >🗑️</button>
         </div>
       </header>
 
-      <div
-        class="retro-column__cards"
-        (dragover)="onCardAreaDragOver($event)"
-        (dragleave)="onCardAreaDragLeave($event)"
-        (drop)="onCardAreaDrop($event)"
-      >
-        @if (cardsRevealed() || isModerator()) {
-          @for (card of column().cards; track card.id; let idx = $index) {
-            <div
-              class="retro-column__card-wrapper"
-              [class.retro-column__card-wrapper--drop-above]="dropIndex() === idx"
-              [class.retro-column__card-wrapper--revealed]="cardsRevealed()"
-              [style.animation-delay]="(idx * 0.05) + 's'"
-              (dragover)="onCardDragOver($event, idx)"
-            >
-              <app-retro-card [card]="card" />
-            </div>
-          }
-          @if (dropIndex() === column().cards.length) {
-            <div class="retro-column__drop-indicator"></div>
+      <div #cardsContainer class="retro-column__cards">
+        @if (cardsVisible() || isModerator()) {
+          @for (card of column().cards; track card.id) {
+            <app-retro-card [card]="card" />
           }
         } @else {
-          @for (card of ownCards(); track card.id; let idx = $index) {
-            <div
-              class="retro-column__card-wrapper"
-              [class.retro-column__card-wrapper--drop-above]="dropIndex() === idx"
-              (dragover)="onCardDragOver($event, idx)"
-            >
-              <app-retro-card [card]="card" />
-            </div>
+          @for (card of ownCards(); track card.id) {
+            <app-retro-card [card]="card" />
           }
           @if (hiddenCardCount() > 0) {
             <div class="retro-column__hidden-count" aria-live="polite">
@@ -91,13 +64,26 @@ import { RetroCardComponent } from './retro-card.component';
         }
       </div>
     </div>
+
+    <!-- Delete Column Confirmation Dialog -->
+    @if (showDeleteConfirm()) {
+      <div class="retro-column__dialog-backdrop" (click)="showDeleteConfirm.set(false)">
+        <div class="retro-column__dialog" (click)="$event.stopPropagation()" role="alertdialog" aria-label="Confirm delete column">
+          <p class="retro-column__dialog-text">Delete column "{{ column().name }}" and all its cards?</p>
+          <div class="retro-column__dialog-actions">
+            <button class="retro-column__dialog-btn retro-column__dialog-btn--cancel" (click)="showDeleteConfirm.set(false)">Cancel</button>
+            <button class="retro-column__dialog-btn retro-column__dialog-btn--delete" (click)="confirmDeleteColumn()">Delete</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     :host {
       display: block;
-      min-width: 220px;
-      max-width: 320px;
-      flex: 1 0 220px;
+      min-width: 240px;
+      width: 240px;
+      flex: 0 0 240px;
     }
 
     .retro-column {
@@ -105,15 +91,15 @@ import { RetroCardComponent } from './retro-card.component';
       flex-direction: column;
       height: 100%;
       background: #f8f9fa;
-      border: 1px solid #e0e0e0;
+      border: 2px solid #e0e0e0;
       border-radius: 6px;
       overflow: hidden;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: border-color 0.15s ease;
     }
 
-    .retro-column--drag-over {
+    .retro-column.drag-over {
       border-color: #667eea;
-      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+      background: #f0f4ff;
     }
 
     /* Header */
@@ -176,7 +162,6 @@ import { RetroCardComponent } from './retro-card.component';
       font-weight: 700;
       cursor: pointer;
       line-height: 1;
-      transition: background 0.15s ease;
     }
 
     .retro-column__add-btn:hover:not(:disabled) {
@@ -202,7 +187,6 @@ import { RetroCardComponent } from './retro-card.component';
       border-radius: 4px;
       font-size: 0.7rem;
       cursor: pointer;
-      transition: color 0.15s ease, background 0.15s ease;
     }
 
     .retro-column__delete-btn:hover:not(:disabled) {
@@ -222,8 +206,8 @@ import { RetroCardComponent } from './retro-card.component';
       padding: 0.375rem;
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      min-height: 40px;
+      gap: 0.375rem;
+      min-height: 60px;
     }
 
     .retro-column__cards::-webkit-scrollbar {
@@ -244,46 +228,6 @@ import { RetroCardComponent } from './retro-card.component';
       background: #666;
     }
 
-    .retro-column__card-wrapper {
-      position: relative;
-    }
-
-    .retro-column__card-wrapper--drop-above::before {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #667eea;
-      border-radius: 1px;
-    }
-
-    .retro-column__card-wrapper--revealed {
-      animation: cardReveal 0.4s ease-out both;
-    }
-
-    @keyframes cardReveal {
-      0% {
-        opacity: 0;
-        transform: scale(0.8) rotateX(10deg);
-      }
-      50% {
-        transform: scale(1.02);
-      }
-      100% {
-        opacity: 1;
-        transform: scale(1) rotateX(0);
-      }
-    }
-
-    .retro-column__drop-indicator {
-      height: 2px;
-      background: #667eea;
-      border-radius: 1px;
-      margin-top: 0.125rem;
-    }
-
     .retro-column__hidden-count {
       text-align: center;
       font-size: 0.7rem;
@@ -294,27 +238,98 @@ import { RetroCardComponent } from './retro-card.component';
       border: 1px dashed #ddd;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .retro-column,
-      .retro-column__add-btn {
-        transition: none;
-      }
+    /* Drop indicator injected via DOM */
+    :host ::ng-deep .retro-drop-indicator {
+      height: 3px;
+      background: #667eea;
+      border-radius: 2px;
+      margin: 2px 0;
+      transition: none;
+    }
+
+    /* Delete confirmation dialog */
+    .retro-column__dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .retro-column__dialog {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.25rem;
+      min-width: 280px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .retro-column__dialog-text {
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+      color: #333;
+    }
+
+    .retro-column__dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    .retro-column__dialog-btn {
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      min-height: 36px;
+    }
+
+    .retro-column__dialog-btn--cancel {
+      border: 1px solid #d0d5dd;
+      background: #fff;
+      color: #555;
+    }
+
+    .retro-column__dialog-btn--cancel:hover {
+      background: #f5f5f5;
+    }
+
+    .retro-column__dialog-btn--delete {
+      border: none;
+      background: #d32f2f;
+      color: #fff;
+    }
+
+    .retro-column__dialog-btn--delete:hover {
+      background: #b71c1c;
     }
   `],
 })
 export class RetroColumnComponent {
   private readonly ws = inject(RetroWebSocketService);
   private readonly retroState = inject(RetroStateService);
+  private readonly elementRef = inject(ElementRef);
+
+  readonly cardsContainer = viewChild<ElementRef>('cardsContainer');
 
   /** Required input: the column data */
   readonly column = input.required<RetroColumn>();
 
-  /** Internal drag state */
-  readonly isDragOverColumn = signal(false);
-  readonly dropIndex = signal<number | null>(null);
+  /** UI state */
+  readonly showDeleteConfirm = signal(false);
 
   /** Computed: whether cards are revealed */
   readonly cardsRevealed = this.retroState.cardsRevealed;
+
+  /** Computed: whether all cards should be visible to everyone */
+  readonly cardsVisible = computed(() => {
+    const config = this.retroState.config();
+    if (!config?.hideCardsInitially) return true;
+    return this.retroState.cardsRevealed();
+  });
 
   /** Computed: whether current user is moderator */
   readonly isModerator = this.retroState.isModerator;
@@ -338,134 +353,152 @@ export class RetroColumnComponent {
     return col.cards.filter(card => card.authorId !== userId).length;
   });
 
+  /** Track the drop indicator element for cleanup */
+  private dropIndicator: HTMLElement | null = null;
+
   // --- Add Card ---
 
   onAddCard(): void {
-    const col = this.column();
-    this.ws.sendCardAdd(col.id, '');
+    this.ws.sendCardAdd(this.column().id, '');
   }
 
   // --- Delete Column ---
 
-  onDeleteColumn(): void {
-    const col = this.column();
-    if (confirm(`Delete column "${col.name}" and all its cards?`)) {
-      this.ws.sendColumnRemove(col.id);
-    }
+  confirmDeleteColumn(): void {
+    this.ws.sendColumnRemove(this.column().id);
+    this.showDeleteConfirm.set(false);
   }
 
-  // --- Column Drag-and-Drop (for reordering columns) ---
+  // --- Column Drag Start (for reordering columns) ---
 
   onColumnDragStart(event: DragEvent): void {
-    const col = this.column();
-    event.dataTransfer?.setData('application/retro-column-id', col.id);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-    }
+    event.dataTransfer!.setData('text/retro-column-id', this.column().id);
+    event.dataTransfer!.effectAllowed = 'move';
+    // Don't propagate to the column's own dragover
+    event.stopPropagation();
   }
 
   onColumnDragEnd(_event: DragEvent): void {
-    this.isDragOverColumn.set(false);
-    this.dropIndex.set(null);
+    this.removeDropIndicator();
+    this.elementRef.nativeElement.querySelector('.retro-column')?.classList.remove('drag-over');
   }
 
-  onColumnDragOver(event: DragEvent): void {
+  // --- Unified Drag Over / Drop for both cards and columns ---
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'move';
+
     const types = Array.from(event.dataTransfer?.types ?? []);
-    // Accept column drops for reordering
-    if (types.includes('application/retro-column-id')) {
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move';
-      }
-      this.isDragOverColumn.set(true);
-    }
-    // Accept card drops for moving between columns
-    if (types.includes('application/retro-card-id')) {
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move';
-      }
-    }
-  }
 
-  onColumnDragLeave(event: DragEvent): void {
-    // Only reset if leaving the column element itself
-    const relatedTarget = event.relatedTarget as HTMLElement | null;
-    const currentTarget = event.currentTarget as HTMLElement;
-    if (!relatedTarget || !currentTarget.contains(relatedTarget)) {
-      this.isDragOverColumn.set(false);
-    }
-  }
-
-  onColumnDrop(event: DragEvent): void {
-    event.preventDefault();
-    this.isDragOverColumn.set(false);
-
-    const columnId = event.dataTransfer?.getData('application/retro-column-id');
-    if (columnId && columnId !== this.column().id) {
-      // Reorder columns: move dragged column to this column's position
-      const columns = this.retroState.columns();
-      const currentOrder = columns.map(c => c.id);
-      const fromIndex = currentOrder.indexOf(columnId);
-      const toIndex = currentOrder.indexOf(this.column().id);
-
-      if (fromIndex !== -1 && toIndex !== -1) {
-        const newOrder = [...currentOrder];
-        newOrder.splice(fromIndex, 1);
-        newOrder.splice(toIndex, 0, columnId);
-        this.ws.sendColumnReorder(newOrder);
-      }
-    }
-  }
-
-  // --- Card Drag-and-Drop (within and between columns) ---
-
-  onCardAreaDragOver(event: DragEvent): void {
-    const types = event.dataTransfer?.types;
-    if (types && (Array.from(types).includes('application/retro-card-id'))) {
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move';
-      }
-      // If no specific card position, drop at end
-      if (this.dropIndex() === null) {
-        this.dropIndex.set(this.column().cards.length);
-      }
-    }
-  }
-
-  onCardAreaDragLeave(event: DragEvent): void {
-    const relatedTarget = event.relatedTarget as HTMLElement | null;
-    const currentTarget = event.currentTarget as HTMLElement;
-    if (!relatedTarget || !currentTarget.contains(relatedTarget)) {
-      this.dropIndex.set(null);
-    }
-  }
-
-  onCardAreaDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const cardId = event.dataTransfer?.getData('application/retro-card-id');
-    if (!cardId) {
-      this.dropIndex.set(null);
+    if (types.includes('text/retro-column-id')) {
+      // Column reorder - highlight the whole column
+      this.elementRef.nativeElement.querySelector('.retro-column')?.classList.add('drag-over');
       return;
     }
 
-    const targetIndex = this.dropIndex() ?? this.column().cards.length;
-    this.ws.sendCardMove(cardId, this.column().id, targetIndex);
-    this.dropIndex.set(null);
+    if (types.includes('text/retro-card-id')) {
+      // Card move - show drop indicator at the correct position
+      this.showDropIndicator(event);
+    }
   }
 
-  onCardDragOver(event: DragEvent, index: number): void {
-    const types = Array.from(event.dataTransfer?.types ?? []);
-    if (types.includes('application/retro-card-id')) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move';
-      }
-      this.dropIndex.set(index);
+  onDragLeave(event: DragEvent): void {
+    const related = event.relatedTarget as HTMLElement | null;
+    const columnEl = this.elementRef.nativeElement.querySelector('.retro-column') as HTMLElement;
+    if (!related || !columnEl.contains(related)) {
+      columnEl.classList.remove('drag-over');
+      this.removeDropIndicator();
     }
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const columnEl = this.elementRef.nativeElement.querySelector('.retro-column');
+    columnEl?.classList.remove('drag-over');
+
+    // Handle column reorder
+    const droppedColumnId = event.dataTransfer?.getData('text/retro-column-id');
+    if (droppedColumnId && droppedColumnId !== this.column().id) {
+      const columns = this.retroState.columns();
+      const currentOrder = columns.map(c => c.id);
+      const fromIndex = currentOrder.indexOf(droppedColumnId);
+      const toIndex = currentOrder.indexOf(this.column().id);
+      if (fromIndex !== -1 && toIndex !== -1) {
+        const newOrder = [...currentOrder];
+        newOrder.splice(fromIndex, 1);
+        newOrder.splice(toIndex, 0, droppedColumnId);
+        this.ws.sendColumnReorder(newOrder);
+      }
+      this.removeDropIndicator();
+      return;
+    }
+
+    // Handle card drop
+    const cardId = event.dataTransfer?.getData('text/retro-card-id');
+    if (cardId) {
+      const dropIdx = this.getDropIndex(event);
+      this.ws.sendCardMove(cardId, this.column().id, dropIdx);
+    }
+
+    this.removeDropIndicator();
+  }
+
+  // --- Drop indicator logic (pure DOM, no signals) ---
+
+  private showDropIndicator(event: DragEvent): void {
+    const container = this.cardsContainer()?.nativeElement as HTMLElement;
+    if (!container) return;
+
+    // Find which card element we're over
+    const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
+    let insertBeforeEl: Element | null = null;
+
+    for (const cardEl of cardElements) {
+      const rect = cardEl.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (event.clientY < midY) {
+        insertBeforeEl = cardEl;
+        break;
+      }
+    }
+
+    // Create or move the indicator
+    if (!this.dropIndicator) {
+      this.dropIndicator = document.createElement('div');
+      this.dropIndicator.className = 'retro-drop-indicator';
+    }
+
+    if (insertBeforeEl) {
+      container.insertBefore(this.dropIndicator, insertBeforeEl);
+    } else {
+      container.appendChild(this.dropIndicator);
+    }
+  }
+
+  private removeDropIndicator(): void {
+    if (this.dropIndicator && this.dropIndicator.parentNode) {
+      this.dropIndicator.parentNode.removeChild(this.dropIndicator);
+    }
+    this.dropIndicator = null;
+  }
+
+  private getDropIndex(event: DragEvent): number {
+    const container = this.cardsContainer()?.nativeElement as HTMLElement;
+    if (!container) return 0;
+
+    const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
+
+    for (let i = 0; i < cardElements.length; i++) {
+      const rect = cardElements[i].getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (event.clientY < midY) {
+        return i;
+      }
+    }
+
+    return cardElements.length;
   }
 }

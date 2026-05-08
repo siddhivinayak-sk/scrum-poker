@@ -558,12 +558,12 @@ export class RetroCardComponent {
 
   onDragStart(event: DragEvent): void {
     const cardData = this.card();
-    event.dataTransfer?.setData('application/retro-card-id', cardData.id);
-    event.dataTransfer?.setData('application/retro-source-column-id', cardData.columnId);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-    }
+    event.dataTransfer!.setData('text/retro-card-id', cardData.id);
+    event.dataTransfer!.setData('text/retro-source-column-id', cardData.columnId);
+    event.dataTransfer!.effectAllowed = 'move';
     (event.currentTarget as HTMLElement).classList.add('dragging');
+    // Stop propagation so the column header drag doesn't interfere
+    event.stopPropagation();
   }
 
   onDragEnd(event: DragEvent): void {

@@ -80,6 +80,15 @@ import { ToastService } from '../../services/toast.service';
         (click)="showAddColumnDialog.set(true)"
       >➕</button>
 
+      @if (isModerator()) {
+        <button
+          class="retro-toolbar__btn"
+          title="Board Settings"
+          aria-label="Board Settings"
+          (click)="showSettingsDialog.set(true)"
+        >⚙️</button>
+      }
+
       <!-- Hidden file input for CSV import -->
       <input
         #fileInput
@@ -108,6 +117,49 @@ import { ToastService } from '../../services/toast.service';
           <div class="retro-dialog__actions">
             <button class="retro-dialog__btn retro-dialog__btn--cancel" (click)="showAddColumnDialog.set(false)">Cancel</button>
             <button class="retro-dialog__btn retro-dialog__btn--ok" (click)="onDialogOk()">OK</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Board Settings Dialog -->
+    @if (showSettingsDialog()) {
+      <div class="retro-dialog-backdrop" (click)="showSettingsDialog.set(false)">
+        <div class="retro-dialog retro-dialog--settings" (click)="$event.stopPropagation()" role="dialog" aria-label="Board settings">
+          <h3 class="retro-dialog__title">Board Settings</h3>
+          <div class="retro-settings">
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.hideCardsInitially" (change)="onSettingChange('hideCardsInitially', $event)" />
+              <span>Hide cards initially</span>
+            </label>
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.disableVotingInitially" (change)="onSettingChange('disableVotingInitially', $event)" />
+              <span>Disable voting initially</span>
+            </label>
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.hideVoteCount" (change)="onSettingChange('hideVoteCount', $event)" />
+              <span>Hide vote count on cards</span>
+            </label>
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.oneVotePerCard" (change)="onSettingChange('oneVotePerCard', $event)" />
+              <span>One vote per card</span>
+            </label>
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.showCardAuthor" (change)="onSettingChange('showCardAuthor', $event)" />
+              <span>Show card author</span>
+            </label>
+            <label class="retro-settings__toggle">
+              <input type="checkbox" [checked]="currentConfig()?.enableGifEmoji" (change)="onSettingChange('enableGifEmoji', $event)" />
+              <span>Enable GIF/emoji</span>
+            </label>
+            <div class="retro-settings__layout">
+              <span>Column layout:</span>
+              <label><input type="radio" name="layout" value="vertical" [checked]="currentConfig()?.columnLayout === 'vertical'" (change)="onLayoutChange('vertical')" /> Vertical</label>
+              <label><input type="radio" name="layout" value="horizontal" [checked]="currentConfig()?.columnLayout === 'horizontal'" (change)="onLayoutChange('horizontal')" /> Horizontal</label>
+            </div>
+          </div>
+          <div class="retro-dialog__actions">
+            <button class="retro-dialog__btn retro-dialog__btn--ok" (click)="showSettingsDialog.set(false)">Close</button>
           </div>
         </div>
       </div>
@@ -245,6 +297,53 @@ import { ToastService } from '../../services/toast.service';
       background: #5a6fd6;
     }
 
+    .retro-dialog--settings {
+      min-width: 320px;
+    }
+
+    .retro-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .retro-settings__toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #333;
+      cursor: pointer;
+    }
+
+    .retro-settings__toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #667eea;
+      cursor: pointer;
+    }
+
+    .retro-settings__layout {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: #333;
+    }
+
+    .retro-settings__layout label {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+    }
+
+    .retro-settings__layout input[type="radio"] {
+      accent-color: #667eea;
+      cursor: pointer;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .retro-toolbar__btn {
         transition: none;
@@ -274,6 +373,10 @@ export class RetroToolbarComponent {
 
   /** Column input state */
   readonly showAddColumnDialog = signal(false);
+  readonly showSettingsDialog = signal(false);
+
+  /** Current config for settings dialog */
+  readonly currentConfig = this.retroState.config;
 
   /** File input reference (managed via event) */
   private fileInputElement: HTMLInputElement | null = null;
@@ -361,5 +464,16 @@ export class RetroToolbarComponent {
       this.ws.sendColumnAdd(name);
     }
     this.showAddColumnDialog.set(false);
+  }
+
+  // --- Settings ---
+
+  onSettingChange(key: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.ws.sendConfigUpdate({ [key]: checked });
+  }
+
+  onLayoutChange(layout: 'vertical' | 'horizontal'): void {
+    this.ws.sendConfigUpdate({ columnLayout: layout });
   }
 }
