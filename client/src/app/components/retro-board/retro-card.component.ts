@@ -1,4 +1,4 @@
-import { Component, input, inject, signal, computed, ElementRef, viewChild } from '@angular/core';
+import { Component, input, inject, signal, computed, ElementRef, viewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RetroCard } from '@shared/types';
@@ -27,7 +27,7 @@ import { RetroStateService } from '../../services/retro-state.service';
         (keydown.enter)="onTextEnter($event)"
         (mousedown)="$event.stopPropagation()"
         draggable="false"
-        rows="2"
+        rows="3"
         placeholder="Enter your thought..."
         aria-label="Card text"
       ></textarea>
@@ -165,7 +165,7 @@ import { RetroStateService } from '../../services/retro-state.service';
   `,
   styles: [`
     .retro-card {
-      padding: 0.5rem;
+      padding: 0.375rem 0.5rem;
       background: #e8ecf0;
       border: 1px solid #d0d5dd;
       border-radius: 6px;
@@ -193,11 +193,12 @@ import { RetroStateService } from '../../services/retro-state.service';
       font-family: inherit;
       resize: none;
       outline: none;
-      padding: 0.125rem 0;
-      margin: 0 0 0.25rem;
+      padding: 0.2rem 0;
+      margin: 0 0 0.125rem;
       word-break: break-word;
       line-height: 1.4;
       color: #1a1a2e;
+      min-height: 2.8em;
     }
 
     .retro-card__text:focus {
@@ -224,14 +225,14 @@ import { RetroStateService } from '../../services/retro-state.service';
     .retro-card__actions {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
-      margin-top: 0.125rem;
+      gap: 0.2rem;
+      margin-top: 0;
     }
 
     .retro-card__vote-section {
       display: flex;
       align-items: center;
-      gap: 0.125rem;
+      gap: 0.1rem;
     }
 
     .retro-card__vote-btn,
@@ -241,14 +242,14 @@ import { RetroStateService } from '../../services/retro-state.service';
       border: none;
       background: transparent;
       cursor: pointer;
-      font-size: 0.75rem;
-      padding: 0.125rem;
-      min-width: 28px;
-      min-height: 28px;
+      font-size: 0.7rem;
+      padding: 0.05rem;
+      min-width: 24px;
+      min-height: 24px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 3px;
       transition: background 0.1s ease;
     }
 
@@ -283,32 +284,34 @@ import { RetroStateService } from '../../services/retro-state.service';
 
     .retro-card__emoji-picker {
       position: absolute;
-      top: 100%;
-      left: 0;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
       background: #fff;
       border: 1px solid #d0d5dd;
       border-radius: 6px;
-      padding: 0.375rem;
+      padding: 0.25rem;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.125rem;
-      width: 160px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0;
+      width: 180px;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
       z-index: 100;
+      margin-bottom: 4px;
     }
 
     .retro-card__emoji-option {
       border: none;
       background: transparent;
       cursor: pointer;
-      font-size: 1rem;
-      padding: 0.2rem;
-      min-width: 30px;
-      min-height: 30px;
+      font-size: 0.9rem;
+      padding: 0.15rem;
+      min-width: 26px;
+      min-height: 26px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 3px;
     }
 
     .retro-card__emoji-option:hover {
@@ -420,6 +423,7 @@ import { RetroStateService } from '../../services/retro-state.service';
 export class RetroCardComponent {
   private readonly ws = inject(RetroWebSocketService);
   private readonly retroState = inject(RetroStateService);
+  private readonly elementRef = inject(ElementRef);
 
   readonly card = input.required<RetroCard>();
 
@@ -538,6 +542,13 @@ export class RetroCardComponent {
 
   toggleEmojiPicker(): void {
     this.showEmojiPicker.update(v => !v);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.showEmojiPicker() && !this.elementRef.nativeElement.contains(event.target)) {
+      this.showEmojiPicker.set(false);
+    }
   }
 
   insertEmoji(emoji: string): void {

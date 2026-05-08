@@ -231,6 +231,16 @@ export class RetroWebSocketService implements OnDestroy {
 
   private scheduleReconnect(): void {
     this.clearReconnectTimer();
+
+    // After 10 failed attempts, give up and redirect to login
+    if (this.reconnectAttempt >= 10) {
+      this.manualDisconnect = true;
+      this._connectionState.set('disconnected');
+      this.toastService.show('error', 'Unable to connect after 10 attempts. Redirecting to login.');
+      this.router.navigate(['/login']);
+      return;
+    }
+
     const delay = calculateRetroBackoff(this.reconnectAttempt);
     this.reconnectAttempt++;
     this.reconnectTimer = setTimeout(() => {

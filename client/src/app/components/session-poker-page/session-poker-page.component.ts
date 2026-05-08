@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CardDeckComponent } from '../card-deck/card-deck.component';
 import { BoardComponent } from '../board/board.component';
@@ -53,6 +53,13 @@ import { BasePathService } from '../../services/base-path.service';
     } @else {
       <div class="session-poker-page">
         <header class="session-poker-page__header">
+          <button
+            class="session-poker-page__lobby-btn"
+            type="button"
+            title="Back to Lobby"
+            aria-label="Back to Lobby"
+            (click)="goToLobby()"
+          >🏠</button>
           <h1>{{ sessionState.sessionConfig()?.gameName || 'Scrum Poker' }}</h1>
           @if (currentRoundStartedAt()) {
             <app-voting-timer-display
@@ -279,6 +286,25 @@ import { BasePathService } from '../../services/base-path.service';
         color: var(--text-on-primary);
         font-weight: 700;
         letter-spacing: 0.02em;
+      }
+
+      .session-poker-page__lobby-btn {
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0.3rem 0.5rem;
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease;
+      }
+
+      .session-poker-page__lobby-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
       }
 
       .session-poker-page__header-right {
@@ -628,6 +654,7 @@ import { BasePathService } from '../../services/base-path.service';
 })
 export class SessionPokerPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly wsService = inject(WebSocketService);
   private readonly authService = inject(AuthService);
@@ -696,6 +723,10 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
 
   toggleQrCode(): void {
     this.showQrCode.update((v) => !v);
+  }
+
+  goToLobby(): void {
+    this.router.navigate(['/lobby']);
   }
 
   toggleHistoryOverlay(): void {
