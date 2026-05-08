@@ -13,13 +13,13 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
   template: `
     <div class="lobby-container" role="main">
       <div class="lobby-content">
-        <h1 class="lobby-title">Scrum Poker</h1>
+        <h1 class="lobby-title">Agile Application Catalog</h1>
         <p class="lobby-subtitle">Choose an option to get started</p>
 
         <div class="lobby-cards">
           <!-- Start New Game -->
           <div class="lobby-card">
-            <h2 class="lobby-card__title">Start New Game</h2>
+            <h2 class="lobby-card__title">Scrum Poker</h2>
             <p class="lobby-card__description">
               Create a new estimation session and invite your team
             </p>
@@ -34,7 +34,7 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
 
           <!-- Create Retrospective Board -->
           <div class="lobby-card">
-            <h2 class="lobby-card__title">Create Retrospective Board</h2>
+            <h2 class="lobby-card__title">Retrospective Board</h2>
             <p class="lobby-card__description">
               Run a sprint retrospective with your team using customizable templates
             </p>

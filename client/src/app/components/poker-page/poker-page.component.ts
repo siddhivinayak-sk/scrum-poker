@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { CardDeckComponent } from '../card-deck/card-deck.component';
 import { BoardComponent } from '../board/board.component';
 import { StoryManagerComponent } from '../story-manager/story-manager.component';
@@ -25,7 +26,16 @@ import { AuthService } from '../../services/auth.service';
   template: `
     <div class="poker-page">
       <header class="poker-page__header">
-        <h1>Scrum Poker</h1>
+        <div class="poker-page__header-left">
+          <button
+            class="poker-page__lobby-btn"
+            type="button"
+            title="Back to Lobby"
+            aria-label="Back to Lobby"
+            (click)="goToLobby()"
+          >🏠</button>
+          <h1>Scrum Poker</h1>
+        </div>
         <app-user-menu />
       </header>
 
@@ -120,6 +130,31 @@ import { AuthService } from '../../services/auth.service';
         color: var(--text-on-primary);
         font-weight: 700;
         letter-spacing: 0.02em;
+      }
+
+      .poker-page__header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .poker-page__lobby-btn {
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 0.3rem 0.5rem;
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease;
+      }
+
+      .poker-page__lobby-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
       }
 
       .poker-page__main {
@@ -328,11 +363,16 @@ export class PokerPageComponent implements OnInit, OnDestroy {
   private readonly sessionState = inject(SessionStateService);
   private readonly wsService = inject(WebSocketService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly historyOverlayOpen = signal(false);
 
   toggleHistoryOverlay(): void {
     this.historyOverlayOpen.update((v) => !v);
+  }
+
+  goToLobby(): void {
+    this.router.navigate(['/lobby']);
   }
 
   ngOnInit(): void {
