@@ -416,7 +416,9 @@ function handleConfigUpdate(ws: WebSocket, user: User, sessionId: string, sessio
   }
 
   const updatedConfig = session.updateConfig(config);
-  broadcastToSession(sessionId, 'retro:config:updated', { config: updatedConfig });
+  // Include current votingEnabled so clients can update board state immediately
+  const votingEnabled = session.getSessionState().board.votingEnabled;
+  broadcastToSession(sessionId, 'retro:config:updated', { config: updatedConfig, votingEnabled });
 }
 
 function handleRoleChange(ws: WebSocket, user: User, sessionId: string, session: RetroSession, data: any): void {

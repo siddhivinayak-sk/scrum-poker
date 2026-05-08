@@ -170,29 +170,45 @@ export class RetroStateService implements OnDestroy {
     );
 
     // Card moved
+    // Server broadcasts { cardId, targetColumnId, targetIndex }
     this.subscriptions.push(
       this.ws
-        .on<{ cardId: string; fromColumnId: string; toColumnId: string; targetIndex: number }>(
+        .on<{ cardId: string; targetColumnId: string; targetIndex: number }>(
           'retro:card:moved'
         )
-        .subscribe(({ cardId, fromColumnId, toColumnId, targetIndex }) => {
+        .subscribe(({ cardId, targetColumnId, targetIndex }) => {
           this.updateState((state) => {
-            // Find the card in the source column
-            const sourceCol = state.board.columns.find((c) => c.id === fromColumnId);
-            const card = sourceCol?.cards.find((c) => c.id === cardId);
-            if (!card) return state;
+            // Find the card and its current column by searching all columns
+            let card: RetroCard | undefined;
+            let fromColumnId: string | undefined;
+            for (const col of state.board.columns) {
+              const found = col.cards.find((c) => c.id === cardId);
+              if (found) {
+                card = found;
+                fromColumnId = col.id;
+                break;
+              }
+            }
+            if (!card || !fromColumnId) return state;
 
-            const movedCard = { ...card, columnId: toColumnId };
+            const movedCard = { ...card, columnId: targetColumnId };
 
             return {
               ...state,
               board: {
                 ...state.board,
                 columns: state.board.columns.map((col) => {
+                  if (col.id === fromColumnId && fromColumnId === targetColumnId) {
+                    // Same-column move: remove then re-insert in one step so
+                    // the first branch doesn't swallow the return early.
+                    const withoutCard = col.cards.filter((c) => c.id !== cardId);
+                    withoutCard.splice(targetIndex, 0, movedCard);
+                    return { ...col, cards: withoutCard };
+                  }
                   if (col.id === fromColumnId) {
                     return { ...col, cards: col.cards.filter((c) => c.id !== cardId) };
                   }
-                  if (col.id === toColumnId) {
+                  if (col.id === targetColumnId) {
                     const newCards = [...col.cards];
                     newCards.splice(targetIndex, 0, movedCard);
                     return { ...col, cards: newCards };
@@ -388,10 +404,15 @@ export class RetroStateService implements OnDestroy {
 
     // Config updated
     this.subscriptions.push(
-      this.ws.on<{ config: RetroConfiguration }>('retro:config:updated').subscribe(({ config }) => {
+      this.ws.on<{ config: RetroConfiguration; votingEnabled?: boolean }>('retro:config:updated').subscribe(({ config, votingEnabled }) => {
         this.updateState((state) => ({
           ...state,
           config,
+          board: {
+            ...state.board,
+            // Sync votingEnabled when the server sends it alongside the config change
+            ...(votingEnabled !== undefined ? { votingEnabled } : {}),
+          },
         }));
       })
     );

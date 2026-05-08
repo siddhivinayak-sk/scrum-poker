@@ -431,6 +431,11 @@ export class RetroSession {
   }
 
   updateConfig(partial: Partial<RetroConfiguration>): RetroConfiguration {
+    // Keep board.votingEnabled in sync with disableVotingInitially whenever
+    // the setting is explicitly included in the update.
+    if ('disableVotingInitially' in partial) {
+      this.board.votingEnabled = !partial.disableVotingInitially;
+    }
     this.config = { ...this.config, ...partial };
     this.touch();
     return this.config;

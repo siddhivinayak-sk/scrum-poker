@@ -9,6 +9,9 @@ import { RetroCardComponent } from './retro-card.component';
   selector: 'app-retro-column',
   standalone: true,
   imports: [CommonModule, RetroCardComponent],
+  host: {
+    '[class.is-horizontal]': 'isHorizontalLayout()'
+  },
   template: `
     <div
       class="retro-column"
@@ -84,6 +87,13 @@ import { RetroCardComponent } from './retro-card.component';
       min-width: 240px;
       width: 240px;
       flex: 0 0 240px;
+    }
+
+    /* Horizontal layout: each aspect spans full width, cards flow left-to-right */
+    :host.is-horizontal {
+      width: 100%;
+      min-width: unset;
+      flex: 0 0 auto;
     }
 
     .retro-column {
@@ -210,6 +220,23 @@ import { RetroCardComponent } from './retro-card.component';
       min-height: 60px;
     }
 
+    /* Horizontal mode: cards flow left-to-right */
+    :host.is-horizontal .retro-column__cards {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      align-items: flex-start;
+      min-height: unset;
+    }
+
+    /* Fixed card width when displayed in a horizontal row */
+    :host.is-horizontal .retro-column__cards > app-retro-card {
+      flex: 0 0 200px;
+      min-width: 200px;
+      max-width: 200px;
+    }
+
     .retro-column__cards::-webkit-scrollbar {
       width: 6px;
     }
@@ -238,13 +265,23 @@ import { RetroCardComponent } from './retro-card.component';
       border: 1px dashed #ddd;
     }
 
-    /* Drop indicator injected via DOM */
+    /* Drop indicator injected via DOM — vertical layout (default) */
     :host ::ng-deep .retro-drop-indicator {
       height: 3px;
       background: #667eea;
       border-radius: 2px;
       margin: 2px 0;
       transition: none;
+      flex-shrink: 0;
+    }
+
+    /* Drop indicator — horizontal layout (vertical bar between cards) */
+    :host.is-horizontal ::ng-deep .retro-drop-indicator {
+      width: 3px;
+      height: auto;
+      align-self: stretch;
+      min-height: 80px;
+      margin: 0 2px;
     }
 
     /* Delete confirmation dialog */
@@ -336,6 +373,11 @@ export class RetroColumnComponent {
 
   /** Computed: whether board is completed */
   readonly isCompleted = this.retroState.isCompleted;
+
+  /** Computed: whether the board is in horizontal layout mode */
+  readonly isHorizontalLayout = computed(() => {
+    return this.retroState.config()?.columnLayout === 'horizontal';
+  });
 
   /** Computed: current user's own cards in this column (when cards are hidden) */
   readonly ownCards = computed(() => {
@@ -439,7 +481,16 @@ export class RetroColumnComponent {
     // Handle card drop
     const cardId = event.dataTransfer?.getData('text/retro-card-id');
     if (cardId) {
-      const dropIdx = this.getDropIndex(event);
+      let dropIdx = this.getDropIndex(event);
+      // getDropIndex counts the dragged card itself (still in the DOM).
+      // For same-column moves where the card was above the drop position
+      // (moving down), removing the card first shifts all subsequent cards
+      // up by one — so we must decrement the index to stay consistent.
+      const cards = this.column().cards;
+      const originalIndex = cards.findIndex((c) => c.id === cardId);
+      if (originalIndex !== -1 && originalIndex < dropIdx) {
+        dropIdx -= 1;
+      }
       this.ws.sendCardMove(cardId, this.column().id, dropIdx);
     }
 
@@ -452,20 +503,23 @@ export class RetroColumnComponent {
     const container = this.cardsContainer()?.nativeElement as HTMLElement;
     if (!container) return;
 
-    // Find which card element we're over
+    const isHorizontal = this.isHorizontalLayout();
     const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
     let insertBeforeEl: Element | null = null;
 
     for (const cardEl of cardElements) {
       const rect = cardEl.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (event.clientY < midY) {
+      const mid = isHorizontal
+        ? rect.left + rect.width / 2
+        : rect.top + rect.height / 2;
+      const pos = isHorizontal ? event.clientX : event.clientY;
+      if (pos < mid) {
         insertBeforeEl = cardEl;
         break;
       }
     }
 
-    // Create or move the indicator
+    // Create or reuse the indicator
     if (!this.dropIndicator) {
       this.dropIndicator = document.createElement('div');
       this.dropIndicator.className = 'retro-drop-indicator';
@@ -489,12 +543,16 @@ export class RetroColumnComponent {
     const container = this.cardsContainer()?.nativeElement as HTMLElement;
     if (!container) return 0;
 
+    const isHorizontal = this.isHorizontalLayout();
     const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
 
     for (let i = 0; i < cardElements.length; i++) {
       const rect = cardElements[i].getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (event.clientY < midY) {
+      const mid = isHorizontal
+        ? rect.left + rect.width / 2
+        : rect.top + rect.height / 2;
+      const pos = isHorizontal ? event.clientX : event.clientY;
+      if (pos < mid) {
         return i;
       }
     }
