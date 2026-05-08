@@ -16,13 +16,33 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 const retroWss = new WebSocketServer({ noServer: true });
 
+/**
+ * BASE_PATH: the public URL prefix the browser sees (e.g. /scrum-poker).
+ * PRESERVE_PATH: set to "true" if the ingress forwards the full path
+ *   (e.g. container receives /scrum-poker/login instead of /login).
+ *
+ * Declared early so the WebSocket upgrade handler can reference them.
+ */
+const rawBasePath = process.env.BASE_PATH || '';
+const PUBLIC_PATH = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '');
+const preservePath = process.env.PRESERVE_PATH === 'true';
+
 // Handle WebSocket upgrade manually — this gives us control over the path
 // and lets us log upgrade attempts for debugging
 server.on('upgrade', (request, socket, head) => {
   const reqUrl = request.url || '';
   console.log(`WebSocket upgrade request: ${reqUrl}`);
 
-  if (reqUrl.startsWith('/retro')) {
+  // When the ingress preserves the full path (PRESERVE_PATH=true), the URL
+  // includes the PUBLIC_PATH prefix (e.g. /scrum-poker/retro?...).
+  // Strip the prefix before checking the WS route so retro connections are
+  // not accidentally sent to the poker handler.
+  const routingPath =
+    preservePath && PUBLIC_PATH && reqUrl.startsWith(PUBLIC_PATH)
+      ? reqUrl.slice(PUBLIC_PATH.length)
+      : reqUrl;
+
+  if (routingPath.startsWith('/retro')) {
     // Route retro WebSocket connections to the retro handler
     retroWss.handleUpgrade(request, socket, head, (ws) => {
       retroWss.emit('connection', ws, request);
@@ -34,15 +54,6 @@ server.on('upgrade', (request, socket, head) => {
     });
   }
 });
-
-/**
- * BASE_PATH: the public URL prefix the browser sees (e.g. /scrum-poker).
- * PRESERVE_PATH: set to "true" if the ingress forwards the full path
- *   (e.g. container receives /scrum-poker/login instead of /login).
- */
-const rawBasePath = process.env.BASE_PATH || '';
-const PUBLIC_PATH = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '');
-const preservePath = process.env.PRESERVE_PATH === 'true';
 
 // Global middleware
 app.use(express.json());

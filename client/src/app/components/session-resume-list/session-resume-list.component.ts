@@ -1,9 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SessionSummary } from '@shared/types';
 import { BasePathService } from '../../services/base-path.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-session-resume-list',
@@ -111,6 +112,7 @@ export class SessionResumeListComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly basePath = inject(BasePathService);
+  private readonly auth = inject(AuthService);
 
   readonly sessions = signal<SessionSummary[]>([]);
   readonly loading = signal(false);
@@ -142,8 +144,17 @@ export class SessionResumeListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
+    const token = this.auth.getToken();
+    if (!token) {
+      // No session — nothing to show
+      this.sessions.set([]);
+      this.loading.set(false);
+      return;
+    }
+
     const apiUrl = this.basePath.getApiUrl('/api/sessions/mine');
-    this.http.get<{ sessions: SessionSummary[] }>(apiUrl).subscribe({
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    this.http.get<{ sessions: SessionSummary[] }>(apiUrl, { headers }).subscribe({
       next: (response) => {
         this.sessions.set(response.sessions);
         this.loading.set(false);
