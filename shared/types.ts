@@ -159,6 +159,84 @@ export interface SessionInfo {
   ownerId: string;
 }
 
+// --- Retrospective Board Types ---
+
+// Column layout type
+export type ColumnLayout = 'vertical' | 'horizontal';
+
+// Retrospective board configuration
+export interface RetroConfiguration {
+  boardName: string;
+  maxVotesPerUser: number;                // default: 6, positive integer
+  templateId: string;                     // references a template
+  hideCardsInitially: boolean;            // default: false
+  disableVotingInitially: boolean;        // default: false
+  hideVoteCount: boolean;                 // default: false
+  oneVotePerCard: boolean;                // default: false
+  showCardAuthor: boolean;                // default: false
+  password: string | null;                // null = no password
+  enableGifEmoji: boolean;               // default: true
+  columnLayout: ColumnLayout;             // default: 'vertical'
+}
+
+// Retrospective template definition
+export interface RetroTemplate {
+  id: string;           // kebab-case identifier
+  name: string;         // display name
+  columns: string[];    // ordered column names
+}
+
+// Retrospective board state
+export interface RetroBoard {
+  columns: RetroColumn[];
+  context: string;                        // sprint context description
+  cardsRevealed: boolean;                 // moderator has revealed cards
+  votingEnabled: boolean;                 // moderator has enabled voting
+  isCompleted: boolean;                   // board is locked
+}
+
+// Retrospective column
+export interface RetroColumn {
+  id: string;           // UUID
+  name: string;
+  cards: RetroCard[];
+  order: number;        // position index
+}
+
+// Retrospective card
+export interface RetroCard {
+  id: string;           // UUID
+  text: string;
+  authorId: string;     // userId of creator
+  authorName: string;   // display name of creator
+  votes: number;        // total vote count
+  votedBy: string[];    // userIds who voted on this card
+  comments: RetroComment[];
+  columnId: string;     // parent column reference
+  order: number;        // position within column
+  createdAt: string;    // ISO 8601
+}
+
+// Retrospective comment
+export interface RetroComment {
+  id: string;           // UUID
+  text: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;    // ISO 8601
+}
+
+// Retrospective session state (full state for sync)
+export interface RetroSessionState {
+  sessionId: string;
+  config: RetroConfiguration;
+  board: RetroBoard;
+  participants: User[];              // reuses existing User type
+  ownerId: string;
+  createdAt: string;
+  votesRemaining: Record<string, number>; // userId -> remaining votes
+}
+
 // --- Helper Functions ---
 
 /**
