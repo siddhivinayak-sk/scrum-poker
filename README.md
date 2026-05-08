@@ -1,6 +1,6 @@
-# Scrum Poker & Retrospective Board
+# Agile Application Catalog
 
-A real-time collaborative tool for agile teams. Includes **Planning Poker** for story estimation and a **Retrospective Board** for structured sprint retrospectives — both with real-time collaboration via WebSocket.
+A real-time collaborative tool for agile teams. Includes **Scrum Poker** for story estimation and a **Retrospective Board** for structured sprint retrospectives — both with real-time collaboration via WebSocket.
 
 ## Features
 
@@ -45,6 +45,9 @@ A real-time collaborative tool for agile teams. Includes **Planning Poker** for 
 - **Session history**: Collapsible history of completed rounds with metrics
 - **Game name**: Optional session name displayed in the header for all participants
 - **Responsive design**: Desktop sidebar with accordion sections; mobile overlay for history
+- **Back to Lobby**: 🏠 button on both poker and retro session pages to return to the lobby at any time
+- **Connection resilience**: Auto-reconnect with exponential backoff; redirects to login after 10 failed attempts
+- **Compact card design**: Optimized card layout with larger text area and smaller action buttons
 
 ---
 
@@ -57,9 +60,9 @@ A real-time collaborative tool for agile teams. Includes **Planning Poker** for 
 - **Max votes per user**: Set a vote budget (default: 6)
 
 #### Advanced Configuration
-- **Hide cards initially**: Cards are hidden until the moderator reveals them (prevents bias)
-- **Disable voting initially**: Voting is locked until the moderator enables it
-- **Hide vote count**: Vote counts are not visible on cards
+- **Hide cards initially** (default: on): Cards are hidden until the moderator reveals them (prevents bias)
+- **Disable voting initially** (default: on): Voting is locked until the moderator enables it
+- **Hide vote count** (default: on): Vote counts are not visible on cards
 - **One vote per card**: Each participant can only vote once per card
 - **Show card author**: Display who wrote each card
 - **Password protection**: Require a password to join the board
@@ -349,6 +352,7 @@ Continue estimating stories from the issue list. The progress indicator shows `{
 
 - Sessions persist as long as they have activity (cleaned up after 30 minutes of inactivity with 0 participants)
 - Moderators can resume sessions from the **"Your Previous Sessions"** section on the lobby page
+- Click the **🏠 Home button** in the session header to return to the lobby at any time
 
 ---
 
@@ -361,9 +365,10 @@ Continue estimating stories from the issue list. The progress indicator shows `{
 3. Set **Max Votes Per User** (default: 6)
 4. Select a **Template** from 25 options (e.g., "Start, Stop, Continue")
 5. Preview the column names below the dropdown
-6. Optionally expand **Advanced Settings** to configure:
-   - Hide cards initially (for unbiased card writing)
-   - Disable voting initially
+6. Optionally expand **Advanced Settings** to adjust (defaults are pre-selected for a structured retro):
+   - Hide cards initially ✓ (enabled by default — for unbiased card writing)
+   - Disable voting initially ✓ (enabled by default — moderator controls when voting starts)
+   - Hide vote count ✓ (enabled by default — prevents vote anchoring)
    - One vote per card
    - Password protection
    - Column layout (vertical/horizontal)
