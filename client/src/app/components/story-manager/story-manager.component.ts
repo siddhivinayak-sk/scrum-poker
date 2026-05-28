@@ -52,18 +52,6 @@ import { WebSocketService } from '../../services/websocket.service';
         }
 
         <div class="story-manager__actions">
-          @if ((canRevealCards() || isModerator()) && !isRevealed()) {
-            <button
-              type="button"
-              class="story-manager__btn story-manager__btn--reveal"
-              [disabled]="!canReveal()"
-              aria-label="Reveal all cards"
-              title="Reveal all cards"
-              (click)="revealCards()"
-            >
-              Reveal Cards
-            </button>
-          }
         </div>
       </section>
     }

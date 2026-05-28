@@ -28,11 +28,11 @@ function generateSessionId(activeSessions: Map<string, GameSession>): string {
   return id;
 }
 
-/** Cleanup interval: 5 minutes in milliseconds */
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+/** Cleanup interval: 1 hour in milliseconds */
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
-/** Inactive threshold: 30 minutes in milliseconds */
-const INACTIVE_THRESHOLD_MS = 30 * 60 * 1000;
+/** Inactive threshold: 30 days in milliseconds */
+const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Central manager for all game sessions.

@@ -1,59 +1,99 @@
-# Client
+# Agile Application Catalog — Client
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.9.
+Angular 21 frontend for the Agile Application Catalog (Scrum Poker + Retrospective Board).
 
-## Development server
+## Tech Stack
 
-To start a local development server, run:
+- **Angular 21** with standalone components
+- **Signals** for reactive state management
+- **RxJS** for WebSocket event streams
+- **Vitest** for unit testing
+- **fast-check** for property-based testing
+- **SCSS** for component styles
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Development Server
 
 ```bash
-ng generate component component-name
+npm start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
+Starts on `http://localhost:4200/` with proxy to backend at `localhost:3000`.
 
 ## Building
 
-To build the project run:
-
 ```bash
+# Development build
 ng build
+
+# Production build
+ng build --configuration=production
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Build artifacts are stored in `dist/`.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Running Tests
 
 ```bash
+# Unit tests (Vitest)
 ng test
+
+# Or directly
+npx vitest --run
 ```
 
-## Running end-to-end tests
+## Project Structure
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
+```
+src/app/
+├── components/
+│   ├── login/                  # Login page
+│   ├── lobby/                  # Landing page (Scrum Poker + Retro tiles)
+│   ├── session-create/         # Poker session creation
+│   ├── session-poker-page/     # Poker session board
+│   ├── board/                  # Poker voting board (cards)
+│   ├── card-deck/              # Poker card deck
+│   ├── facilitator-flow/       # Moderator workflow controls
+│   ├── issue-list-panel/       # Issue/story list management
+│   ├── metrics/                # Voting metrics display
+│   ├── consensus-indicator/    # Agreement indicator
+│   ├── session-history/        # Round history
+│   ├── story-manager/          # Story submission
+│   ├── user-menu/              # User avatar + dropdown menu
+│   ├── retro-create/           # Retrospective board creation
+│   ├── retro-board/            # Retrospective board view
+│   ├── retro-login/            # Retro session join page
+│   ├── qr-code/                # QR code display
+│   ├── session-settings/       # Session settings panel
+│   ├── countdown-overlay/      # Auto-reveal countdown
+│   ├── voting-timer/           # Voting elapsed time
+│   └── stars-animation/        # Reveal celebration animation
+├── services/
+│   ├── auth.service.ts         # JWT authentication
+│   ├── websocket.service.ts    # Poker WebSocket connection
+│   ├── retro-websocket.service.ts  # Retro WebSocket connection
+│   ├── session-state.service.ts    # Poker session state (signals)
+│   ├── retro-state.service.ts      # Retro session state (signals)
+│   ├── retro-export.service.ts     # CSV export/import
+│   ├── retro-screenshot.service.ts # Board screenshot capture
+│   ├── toast.service.ts        # Toast notifications
+│   └── base-path.service.ts    # URL prefix handling
+├── guards/
+│   ├── auth.guard.ts           # Requires login
+│   ├── session-auth.guard.ts   # Requires poker session auth
+│   └── retro-auth.guard.ts     # Requires retro session auth
+├── app.routes.ts               # Route definitions (lazy-loaded)
+├── app.config.ts               # App configuration
+└── app.ts                      # Root component
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Key Patterns
 
-## Additional Resources
+- **Standalone components** — no NgModules, each component declares its own imports
+- **Signals** — `signal()`, `computed()`, `effect()` for reactive state
+- **Lazy loading** — all routes use `loadComponent()` for code splitting
+- **Path alias** — `@shared/*` maps to `../shared/*` for shared types
+- **WebSocket reconnection** — exponential backoff, max 10 retries then redirect to login
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Environment
+
+The app reads `window.__BASE_PATH__` at runtime (injected by the server) to handle deployments under a URL prefix (e.g., `/scrum-poker`).

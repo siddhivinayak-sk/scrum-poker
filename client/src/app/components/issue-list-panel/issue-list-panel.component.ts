@@ -91,10 +91,21 @@ import { IssueItem } from '@shared/types';
                 class="issue-list-panel__select-btn"
                 (click)="selectIssue(issue.id)"
                 type="button"
-                aria-label="Estimate {{ issue.title }}"
+                [attr.aria-label]="'Estimate ' + issue.title"
                 title="Estimate this issue"
               >
                 Estimate
+              </button>
+            }
+            @if (canManage() && issue.status === 'estimating' && !isActiveIssue(issue)) {
+              <button
+                class="issue-list-panel__select-btn issue-list-panel__select-btn--resume"
+                (click)="selectIssue(issue.id)"
+                type="button"
+                [attr.aria-label]="'Resume ' + issue.title"
+                title="Resume estimation for this issue"
+              >
+                Resume
               </button>
             }
           </li>
@@ -284,6 +295,12 @@ export class IssueListPanelComponent {
 
   selectIssue(issueId: string): void {
     this.ws.send('issue:select', { issueId });
+  }
+
+  isActiveIssue(issue: IssueItem): boolean {
+    const round = this.sessionState.currentRound();
+    if (!round) return false;
+    return round.storyDescription === issue.title;
   }
 
   onDragStart(index: number): void {

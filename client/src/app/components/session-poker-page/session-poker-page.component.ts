@@ -69,6 +69,16 @@ import { BasePathService } from '../../services/base-path.service';
           }
           <div class="session-poker-page__header-right">
             <span class="session-poker-page__session-id">Session: {{ sessionId() }}</span>
+            @if (isSessionOwner()) {
+              <button
+                class="session-poker-page__end-btn"
+                (click)="showEndSessionDialog.set(true)"
+                aria-label="End session"
+                title="End this session"
+              >
+                End Session
+              </button>
+            }
             <button
               class="session-poker-page__copy-btn"
               (click)="copySessionLink()"
@@ -189,6 +199,19 @@ import { BasePathService } from '../../services/base-path.service';
           [active]="sessionState.countdownActive()"
           (onComplete)="onCountdownComplete()"
         />
+
+        <!-- End Session Confirmation Dialog -->
+        @if (showEndSessionDialog()) {
+          <div class="session-poker-page__dialog-backdrop" (click)="showEndSessionDialog.set(false)">
+            <div class="session-poker-page__dialog" (click)="$event.stopPropagation()" role="alertdialog" aria-label="End session confirmation">
+              <p class="session-poker-page__dialog-text">Are you sure you want to end this session? This will remove the session for all participants.</p>
+              <div class="session-poker-page__dialog-actions">
+                <button class="session-poker-page__dialog-btn session-poker-page__dialog-btn--cancel" (click)="showEndSessionDialog.set(false)">Cancel</button>
+                <button class="session-poker-page__dialog-btn session-poker-page__dialog-btn--confirm" (click)="confirmEndSession()">End Session</button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     }
   `,
@@ -335,6 +358,24 @@ import { BasePathService } from '../../services/base-path.service';
         min-height: 44px;
         min-width: 44px;
         transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
+      }
+
+      .session-poker-page__end-btn {
+        padding: 0.5rem 0.875rem;
+        border: 1px solid rgba(255, 100, 100, 0.5);
+        border-radius: 6px;
+        background: rgba(220, 38, 38, 0.7);
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        min-height: 44px;
+        min-width: 44px;
+        transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
+      }
+
+      .session-poker-page__end-btn:hover {
+        background: rgba(220, 38, 38, 0.9);
       }
 
       .session-poker-page__copy-btn:hover,
@@ -649,6 +690,68 @@ import { BasePathService } from '../../services/base-path.service';
           transition: none;
         }
       }
+
+      /* End Session Dialog */
+      .session-poker-page__dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .session-poker-page__dialog {
+        background: #fff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        min-width: 320px;
+        max-width: 400px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .session-poker-page__dialog-text {
+        margin: 0 0 1.25rem;
+        font-size: 0.95rem;
+        color: #333;
+        line-height: 1.4;
+      }
+
+      .session-poker-page__dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      .session-poker-page__dialog-btn {
+        padding: 0.5rem 1.25rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        min-height: 36px;
+      }
+
+      .session-poker-page__dialog-btn--cancel {
+        border: 1px solid #d0d5dd;
+        background: #fff;
+        color: #555;
+      }
+
+      .session-poker-page__dialog-btn--cancel:hover {
+        background: #f5f5f5;
+      }
+
+      .session-poker-page__dialog-btn--confirm {
+        border: none;
+        background: #dc2626;
+        color: #fff;
+      }
+
+      .session-poker-page__dialog-btn--confirm:hover {
+        background: #b91c1c;
+      }
     `,
   ],
 })
@@ -666,6 +769,7 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   readonly sessionNotFound = signal<boolean>(false);
   readonly showQrCode = signal<boolean>(false);
   readonly historyOverlayOpen = signal<boolean>(false);
+  readonly showEndSessionDialog = signal<boolean>(false);
 
   readonly sessionUrl = computed(() => {
     const id = this.sessionId();
@@ -727,6 +831,29 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
 
   goToLobby(): void {
     this.router.navigate(['/lobby']);
+  }
+
+  endSession(): void {
+    this.showEndSessionDialog.set(true);
+  }
+
+  confirmEndSession(): void {
+    this.showEndSessionDialog.set(false);
+    const id = this.sessionId();
+    const token = this.authService.getToken();
+    if (token && id) {
+      this.http.delete(this.basePath.getApiUrl(`/api/sessions/${id}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      }).subscribe({
+        next: () => {
+          this.toastService.show('info', 'Session ended');
+          this.router.navigate(['/lobby']);
+        },
+        error: () => {
+          this.toastService.show('error', 'Failed to end session');
+        },
+      });
+    }
   }
 
   toggleHistoryOverlay(): void {

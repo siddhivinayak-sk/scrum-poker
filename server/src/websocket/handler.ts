@@ -258,6 +258,26 @@ function handleStorySubmit(ws: WebSocket, user: User, sessionId: string, session
   }
 
   try {
+    // Auto-save current round to history if one exists (prevents losing data)
+    const currentRound = session.getCurrentRound();
+    if (currentRound) {
+      const wasRevealed = currentRound.status === 'revealed';
+      const entry = session.clearBoard();
+      broadcastToSession(sessionId, 'board:cleared', { historyEntry: entry });
+
+      // If cards were revealed, mark the matching issue as estimated
+      if (wasRevealed) {
+        const issues = session.getIssueList();
+        const matchingIssue = issues.find(
+          issue => issue.status === 'estimating' && issue.title === entry.storyDescription
+        );
+        if (matchingIssue) {
+          session.markIssueEstimated(matchingIssue.id, entry.roundId);
+          broadcastToSession(sessionId, 'issue:list-updated', { issues: session.getIssueList() });
+        }
+      }
+    }
+
     const round = session.startRound(storyDescription);
     broadcastToSession(sessionId, 'round:started', { round: serializeRound(round) });
   } catch (err: any) {
@@ -500,6 +520,26 @@ function handleIssueSelect(ws: WebSocket, user: User, sessionId: string, session
   }
 
   try {
+    // Auto-save current round to history if one exists (prevents losing vote data)
+    const currentRound = session.getCurrentRound();
+    if (currentRound) {
+      const wasRevealed = currentRound.status === 'revealed';
+      const entry = session.clearBoard();
+      broadcastToSession(sessionId, 'board:cleared', { historyEntry: entry });
+
+      // If cards were revealed, mark the matching issue as estimated
+      if (wasRevealed) {
+        const issues = session.getIssueList();
+        const matchingIssue = issues.find(
+          issue => issue.status === 'estimating' && issue.title === entry.storyDescription
+        );
+        if (matchingIssue) {
+          session.markIssueEstimated(matchingIssue.id, entry.roundId);
+          broadcastToSession(sessionId, 'issue:list-updated', { issues: session.getIssueList() });
+        }
+      }
+    }
+
     const round = session.selectIssueForEstimation(issueId);
     broadcastToSession(sessionId, 'round:started', { round: serializeRound(round) });
     broadcastToSession(sessionId, 'issue:list-updated', { issues: session.getIssueList() });

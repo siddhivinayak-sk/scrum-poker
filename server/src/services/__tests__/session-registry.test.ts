@@ -201,17 +201,17 @@ describe('SessionRegistry', () => {
   });
 
   describe('cleanup timer', () => {
-    it('removes inactive sessions with 0 participants after 30 minutes', () => {
+    it('removes inactive sessions with 0 participants after 30 days', () => {
       const info = registry.createSession('owner-1', makeConfig());
       // Session has 0 participants by default
 
       registry.startCleanupTimer();
 
-      // Advance time by 31 minutes (past the 30-minute threshold)
-      jest.advanceTimersByTime(31 * 60 * 1000);
+      // Advance time by 31 days (past the 30-day threshold)
+      jest.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
 
-      // Advance to the next cleanup interval (5 minutes)
-      jest.advanceTimersByTime(5 * 60 * 1000);
+      // Advance to the next cleanup interval (1 hour)
+      jest.advanceTimersByTime(60 * 60 * 1000);
 
       expect(registry.hasSession(info.sessionId)).toBe(false);
       expect(registry.getActiveSessionCount()).toBe(0);
@@ -230,19 +230,19 @@ describe('SessionRegistry', () => {
       registry.startCleanupTimer();
 
       // Advance time well past the threshold
-      jest.advanceTimersByTime(60 * 60 * 1000);
+      jest.advanceTimersByTime(31 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
 
       // Session should still exist because it has participants
       expect(registry.hasSession(info.sessionId)).toBe(true);
     });
 
-    it('does not remove sessions that are still within the 30-minute window', () => {
+    it('does not remove sessions that are still within the 30-day window', () => {
       const info = registry.createSession('owner-1', makeConfig());
 
       registry.startCleanupTimer();
 
-      // Advance only 5 minutes (one cleanup cycle, but session is still fresh)
-      jest.advanceTimersByTime(5 * 60 * 1000);
+      // Advance only 1 hour (one cleanup cycle, but session is still fresh)
+      jest.advanceTimersByTime(60 * 60 * 1000);
 
       expect(registry.hasSession(info.sessionId)).toBe(true);
     });
@@ -261,8 +261,8 @@ describe('SessionRegistry', () => {
 
       registry.startCleanupTimer();
 
-      // Advance past the threshold + cleanup interval
-      jest.advanceTimersByTime(36 * 60 * 1000);
+      // Advance past the threshold + cleanup interval (31 days + 1 hour)
+      jest.advanceTimersByTime(31 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
 
       expect(registry.hasSession(infoInactive.sessionId)).toBe(false);
       expect(registry.hasSession(infoActive.sessionId)).toBe(true);
@@ -275,8 +275,8 @@ describe('SessionRegistry', () => {
       registry.startCleanupTimer();
       registry.startCleanupTimer();
 
-      // Advance past threshold
-      jest.advanceTimersByTime(36 * 60 * 1000);
+      // Advance past threshold (31 days + 1 hour)
+      jest.advanceTimersByTime(31 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
 
       // Session should be cleaned up exactly once (no errors from multiple timers)
       expect(registry.hasSession(info.sessionId)).toBe(false);
