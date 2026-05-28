@@ -39,17 +39,39 @@ export function computeProgress(issues: { status: string }[]): FlowProgress {
           @switch (flowState()) {
             @case ('idle') {
               <p class="facilitator-flow__prompt">Select or enter the next story</p>
+              @if (hasNextPendingIssue()) {
+                <button
+                  class="facilitator-flow__btn facilitator-flow__btn--next"
+                  (click)="nextIssue()"
+                  type="button"
+                  title="Start next pending issue"
+                >
+                  Next
+                </button>
+              }
             }
             @case ('voting') {
               <p class="facilitator-flow__prompt">Voting in progress</p>
-              <button
-                class="facilitator-flow__btn facilitator-flow__btn--reveal"
-                (click)="revealCards()"
-                type="button"
-                title="Reveal all cards"
-              >
-                Reveal Cards
-              </button>
+              <div class="facilitator-flow__actions">
+                <button
+                  class="facilitator-flow__btn facilitator-flow__btn--reveal"
+                  (click)="revealCards()"
+                  type="button"
+                  title="Reveal all cards"
+                >
+                  Reveal Cards
+                </button>
+                @if (hasNextPendingIssue()) {
+                  <button
+                    class="facilitator-flow__btn facilitator-flow__btn--next"
+                    (click)="nextIssue()"
+                    type="button"
+                    title="Skip to next issue"
+                  >
+                    Next
+                  </button>
+                }
+              </div>
             }
             @case ('revealed') {
               <p class="facilitator-flow__prompt">Cards revealed — discuss and decide</p>
@@ -66,10 +88,20 @@ export function computeProgress(issues: { status: string }[]): FlowProgress {
                   class="facilitator-flow__btn facilitator-flow__btn--clear"
                   (click)="clearAndNext()"
                   type="button"
-                  title="Clear the board and move to next story"
+                  title="Clear the board"
                 >
-                  Clear & Next Story
+                  Clear
                 </button>
+                @if (hasNextPendingIssue()) {
+                  <button
+                    class="facilitator-flow__btn facilitator-flow__btn--next"
+                    (click)="nextIssue()"
+                    type="button"
+                    title="Move to next issue"
+                  >
+                    Next
+                  </button>
+                }
               </div>
             }
           }
@@ -148,6 +180,15 @@ export function computeProgress(issues: { status: string }[]): FlowProgress {
       .facilitator-flow__btn--clear:hover {
         background: #2e7d32;
       }
+
+      .facilitator-flow__btn--next {
+        background: #1976d2;
+        color: #fff;
+      }
+
+      .facilitator-flow__btn--next:hover {
+        background: #1565c0;
+      }
     `,
   ],
 })
@@ -168,6 +209,11 @@ export class FacilitatorFlowComponent {
     return computeProgress(this.sessionState.issueList());
   });
 
+  readonly hasNextPendingIssue = computed<boolean>(() => {
+    const issues = this.sessionState.issueList();
+    return issues.some(i => i.status === 'pending');
+  });
+
   revealCards(): void {
     this.ws.send('cards:reveal', {});
   }
@@ -178,5 +224,13 @@ export class FacilitatorFlowComponent {
 
   clearAndNext(): void {
     this.ws.send('board:clear', {});
+  }
+
+  nextIssue(): void {
+    const issues = this.sessionState.issueList();
+    const nextPending = issues.find(i => i.status === 'pending');
+    if (nextPending) {
+      this.ws.send('issue:select', { issueId: nextPending.id });
+    }
   }
 }

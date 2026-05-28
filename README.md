@@ -624,8 +624,3 @@ The project uses a combination of:
 26. Context editable only by moderator
 27. Icon buttons have accessibility attributes
 
----
-
-## License
-
-Private — Internal use only.

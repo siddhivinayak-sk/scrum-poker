@@ -150,3 +150,32 @@ sessionsRouter.put('/:sessionId/config', (req: Request, res: Response) => {
 
   res.status(200).json({ config: updatedConfig });
 });
+
+/**
+ * DELETE /api/sessions/:sessionId
+ * End (delete) a session. Only the session owner (moderator) can do this.
+ * Returns: { success: true } with status 200
+ */
+sessionsRouter.delete('/:sessionId', (req: Request, res: Response) => {
+  const user = authenticateRequest(req);
+  if (!user) {
+    res.status(401).json({ error: 'UNAUTHORIZED' });
+    return;
+  }
+
+  const sessionId = req.params.sessionId as string;
+  const session = sessionRegistry.getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: 'SESSION_NOT_FOUND' });
+    return;
+  }
+
+  // Only the session owner can end the session
+  if (session.ownerId !== user.id) {
+    res.status(403).json({ error: 'FORBIDDEN', message: 'Only the session owner can end the session' });
+    return;
+  }
+
+  sessionRegistry.deleteSession(sessionId);
+  res.status(200).json({ success: true });
+});
