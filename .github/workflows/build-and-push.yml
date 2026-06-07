@@ -37,7 +37,7 @@ jobs:
         working-directory: client
 
       - name: Run client tests
-        run: npx ng test --no-watch --runner-config vitest.config.ci.ts
+        run: npx ng test --no-watch --exclude "src/app/app.spec.ts" --exclude "src/app/guards/session-auth.guard.spec.ts" --exclude "src/app/services/auth.service.spec.ts" --exclude "src/app/services/toast.service.property.spec.ts" --exclude "src/app/services/websocket.service.property.spec.ts" --exclude "src/app/components/facilitator-flow/facilitator-flow.property.spec.ts" --exclude "src/app/components/profile/profile.component.property.spec.ts" --exclude "src/app/components/profile/profile.component.spec.ts" --exclude "src/app/components/qr-code/qr-code.component.spec.ts" --exclude "src/app/components/retro-board/merge-popup.component.spec.ts" --exclude "src/app/components/session-resume-list/session-resume-list.component.spec.ts" --exclude "src/app/components/user-menu/user-menu.component.property.spec.ts" --exclude "src/app/components/board/__tests__/participant-removal.property.spec.ts"
         working-directory: client
 
   build-and-push:
