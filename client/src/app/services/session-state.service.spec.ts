@@ -108,6 +108,7 @@ describe('SessionStateService', () => {
     });
 
     it('should set currentUser from AuthService', () => {
+      TestBed.flushEffects();
       expect(service.currentUser()).toEqual(mockAuthUser);
     });
   });
@@ -338,6 +339,7 @@ describe('SessionStateService', () => {
     });
 
     it('should update currentUser if the role change is for the current user', () => {
+      TestBed.flushEffects();
       emitEvent('role:changed', {
         user: { id: 'user-1', displayName: 'TestUser', role: 'moderator', isAnonymous: false },
       });

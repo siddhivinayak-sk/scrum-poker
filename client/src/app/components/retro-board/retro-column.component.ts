@@ -1,14 +1,15 @@
 import { Component, input, inject, signal, computed, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RetroColumn } from '@shared/types';
+import { RetroColumn, RetroCard } from '@shared/types';
 import { RetroWebSocketService } from '../../services/retro-websocket.service';
 import { RetroStateService } from '../../services/retro-state.service';
 import { RetroCardComponent } from './retro-card.component';
+import { MergePopupComponent } from './merge-popup.component';
 
 @Component({
   selector: 'app-retro-column',
   standalone: true,
-  imports: [CommonModule, RetroCardComponent],
+  imports: [CommonModule, RetroCardComponent, MergePopupComponent],
   host: {
     '[class.is-horizontal]': 'isHorizontalLayout()'
   },
@@ -80,13 +81,23 @@ import { RetroCardComponent } from './retro-card.component';
         </div>
       </div>
     }
+
+    <!-- Merge Popup -->
+    @if (showMergePopup()) {
+      <app-merge-popup
+        [sourceCardText]="mergeSourceCardText()"
+        [targetCardText]="mergeTargetCardText()"
+        (confirmed)="onMergeConfirmed()"
+        (cancelled)="onMergeCancelled()"
+      />
+    }
   `,
   styles: [`
     :host {
       display: block;
-      min-width: 240px;
-      width: 240px;
-      flex: 0 0 240px;
+      min-width: 300px;
+      width: 300px;
+      flex: 0 0 300px;
     }
 
     /* Horizontal layout: each aspect spans full width, cards flow left-to-right */
@@ -358,6 +369,13 @@ export class RetroColumnComponent {
   /** UI state */
   readonly showDeleteConfirm = signal(false);
 
+  /** Merge popup state */
+  readonly showMergePopup = signal(false);
+  readonly mergeSourceCardText = signal('');
+  readonly mergeTargetCardText = signal('');
+  private mergeSourceCardId: string | null = null;
+  private mergeTargetCardId: string | null = null;
+
   /** Computed: whether cards are revealed */
   readonly cardsRevealed = this.retroState.cardsRevealed;
 
@@ -481,17 +499,38 @@ export class RetroColumnComponent {
     // Handle card drop
     const cardId = event.dataTransfer?.getData('text/retro-card-id');
     if (cardId) {
-      let dropIdx = this.getDropIndex(event);
-      // getDropIndex counts the dragged card itself (still in the DOM).
-      // For same-column moves where the card was above the drop position
-      // (moving down), removing the card first shifts all subsequent cards
-      // up by one — so we must decrement the index to stay consistent.
-      const cards = this.column().cards;
-      const originalIndex = cards.findIndex((c) => c.id === cardId);
-      if (originalIndex !== -1 && originalIndex < dropIdx) {
-        dropIdx -= 1;
+      // Detect card-on-card drop: check if the drop target has a data-card-id attribute
+      const targetCardId = this.getTargetCardId(event);
+
+      if (targetCardId && targetCardId !== cardId) {
+        // Card-on-card drop detected — show merge popup (if board is not completed)
+        if (this.isCompleted()) {
+          // Prevent merge on completed boards
+          this.removeDropIndicator();
+          return;
+        }
+
+        // Find the source and target card texts
+        const sourceCard = this.findCardById(cardId);
+        const targetCard = this.findCardById(targetCardId);
+
+        if (sourceCard && targetCard) {
+          this.mergeSourceCardId = cardId;
+          this.mergeTargetCardId = targetCardId;
+          this.mergeSourceCardText.set(sourceCard.text);
+          this.mergeTargetCardText.set(targetCard.text);
+          this.showMergePopup.set(true);
+        }
+      } else {
+        // Card-on-column drop — move the card as before
+        let dropIdx = this.getDropIndex(event);
+        const cards = this.column().cards;
+        const originalIndex = cards.findIndex((c) => c.id === cardId);
+        if (originalIndex !== -1 && originalIndex < dropIdx) {
+          dropIdx -= 1;
+        }
+        this.ws.sendCardMove(cardId, this.column().id, dropIdx);
       }
-      this.ws.sendCardMove(cardId, this.column().id, dropIdx);
     }
 
     this.removeDropIndicator();
@@ -558,5 +597,57 @@ export class RetroColumnComponent {
     }
 
     return cardElements.length;
+  }
+
+  // --- Card-on-card drop detection ---
+
+  /**
+   * Detect if the drop target is a card element.
+   * Returns the target card's ID if the drop happened on a card, otherwise null.
+   */
+  private getTargetCardId(event: DragEvent): string | null {
+    const target = event.target as HTMLElement;
+    if (!target) return null;
+
+    // Walk up from the drop target to find the closest element with data-card-id
+    const cardElement = target.closest('[data-card-id]');
+    if (cardElement) {
+      return cardElement.getAttribute('data-card-id');
+    }
+
+    return null;
+  }
+
+  /**
+   * Find a card by ID across all columns.
+   */
+  private findCardById(cardId: string): RetroCard | null {
+    const columns = this.retroState.columns();
+    for (const col of columns) {
+      const card = col.cards.find(c => c.id === cardId);
+      if (card) return card;
+    }
+    return null;
+  }
+
+  // --- Merge popup handlers ---
+
+  onMergeConfirmed(): void {
+    if (this.mergeSourceCardId && this.mergeTargetCardId) {
+      this.ws.sendCardMerge(this.mergeSourceCardId, this.mergeTargetCardId);
+    }
+    this.dismissMergePopup();
+  }
+
+  onMergeCancelled(): void {
+    this.dismissMergePopup();
+  }
+
+  private dismissMergePopup(): void {
+    this.showMergePopup.set(false);
+    this.mergeSourceCardId = null;
+    this.mergeTargetCardId = null;
+    this.mergeSourceCardText.set('');
+    this.mergeTargetCardText.set('');
   }
 }

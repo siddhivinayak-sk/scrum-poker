@@ -401,7 +401,7 @@ export class RetroToolbarComponent {
     const state = this.retroState.state();
     if (!state) return;
     this.exportService.exportCSV(state.sessionId).catch(() => {
-      this.toastService.show('error', 'Failed to export CSV');
+      // Error toast with specific server message is handled by RetroExportService
     });
   }
 
@@ -426,7 +426,9 @@ export class RetroToolbarComponent {
 
     this.exportService.importCSV(state.sessionId, file).then(
       () => this.toastService.show('info', 'CSV imported successfully'),
-      () => this.toastService.show('error', 'Failed to import CSV. Check file format.')
+      () => {
+        // Error toast with specific server message is handled by RetroExportService
+      }
     );
   }
 

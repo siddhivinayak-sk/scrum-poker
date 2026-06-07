@@ -12,6 +12,7 @@ describe('IssueListPanelComponent', () => {
   let mockSessionState: {
     issueList: ReturnType<typeof signal<IssueItem[]>>;
     hasIssuePermission: ReturnType<typeof signal<boolean>>;
+    currentRound: ReturnType<typeof signal<any>>;
   };
   let mockWs: { send: ReturnType<typeof vi.fn> };
 
@@ -27,6 +28,7 @@ describe('IssueListPanelComponent', () => {
     mockSessionState = {
       issueList: signal<IssueItem[]>([]),
       hasIssuePermission: signal(true),
+      currentRound: signal(null),
     };
 
     mockWs = { send: vi.fn() };
@@ -157,6 +159,8 @@ describe('IssueListPanelComponent', () => {
         createIssue('b', 'Estimated', 'estimated'),
         createIssue('c', 'Estimating', 'estimating'),
       ]);
+      // Mark the 'Estimating' issue as the active round so it doesn't show a Resume button
+      mockSessionState.currentRound.set({ storyDescription: 'Estimating' } as any);
       fixture.detectChanges();
 
       const buttons = fixture.nativeElement.querySelectorAll('.issue-list-panel__select-btn');

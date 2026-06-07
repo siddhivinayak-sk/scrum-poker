@@ -175,6 +175,9 @@ function handleRetroEvent(ws: WebSocket, user: User, sessionId: string, event: s
       case 'retro:board:complete':
         handleBoardComplete(ws, user, sessionId, session);
         break;
+      case 'retro:card:merge':
+        handleCardMerge(ws, user, sessionId, session, data);
+        break;
       case 'retro:config:update':
         handleConfigUpdate(ws, user, sessionId, session, data);
         break;
@@ -260,6 +263,25 @@ function handleCardMove(ws: WebSocket, user: User, sessionId: string, session: R
 
   session.moveCard(cardId, targetColumnId, targetIndex);
   broadcastToSession(sessionId, 'retro:card:moved', { cardId, targetColumnId, targetIndex });
+}
+
+function handleCardMerge(ws: WebSocket, user: User, sessionId: string, session: RetroSession, data: any): void {
+  const { sourceCardId, targetCardId } = data || {};
+  if (!sourceCardId) {
+    sendError(ws, 'Source card ID is required', 'NOT_FOUND');
+    return;
+  }
+  if (!targetCardId) {
+    sendError(ws, 'Target card ID is required', 'NOT_FOUND');
+    return;
+  }
+
+  const { targetCard, removedFromColumnId } = session.mergeCards(sourceCardId, targetCardId, user.id);
+  broadcastToSession(sessionId, 'retro:card:merged', {
+    targetCard,
+    removedCardId: sourceCardId,
+    removedFromColumnId,
+  });
 }
 
 function handleCardVote(ws: WebSocket, user: User, sessionId: string, session: RetroSession, data: any): void {

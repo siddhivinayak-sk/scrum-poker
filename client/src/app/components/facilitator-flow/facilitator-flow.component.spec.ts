@@ -133,7 +133,7 @@ describe('FacilitatorFlowComponent', () => {
       expect(revoteBtn).toBeTruthy();
       expect(clearBtn).toBeTruthy();
       expect(revoteBtn.textContent?.trim()).toBe('Re-Vote');
-      expect(clearBtn.textContent?.trim()).toBe('Clear & Next Story');
+      expect(clearBtn.textContent?.trim()).toBe('Clear');
     });
 
     it('should not render anything when user lacks reveal permission', () => {

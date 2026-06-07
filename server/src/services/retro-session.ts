@@ -81,28 +81,12 @@ export class RetroSession {
    * If hideCardsInitially is true and cards have not been revealed,
    * only the requesting user's own cards are visible. Card counts
    * per column are still reflected via the column structure.
+   *
+   * Note: The full state (all cards) is always sent to newly-connecting
+   * users so that when cards are revealed, the client already has all data.
+   * The client-side cardsVisible computed handles hide/show.
    */
   getVisibleState(userId: string): RetroSessionState {
-    if (this.config.hideCardsInitially && !this.board.cardsRevealed) {
-      const filteredBoard: RetroBoard = {
-        ...this.board,
-        columns: this.board.columns.map((column) => ({
-          ...column,
-          cards: column.cards.filter((card) => card.authorId === userId),
-        })),
-      };
-
-      return {
-        sessionId: this.sessionId,
-        config: this.config,
-        board: filteredBoard,
-        participants: this.getParticipants(),
-        ownerId: this.ownerId,
-        createdAt: this.createdAt,
-        votesRemaining: this.getVotesRemainingMap(),
-      };
-    }
-
     return this.getSessionState();
   }
 
@@ -439,6 +423,47 @@ export class RetroSession {
     this.config = { ...this.config, ...partial };
     this.touch();
     return this.config;
+  }
+
+  // --- Merge operations ---
+
+  /**
+   * Merge two cards: combines text (target + separator + source), sums votes,
+   * concatenates comments, and removes the source card from its column.
+   * Returns the updated target card and the column ID the source was removed from.
+   */
+  mergeCards(
+    sourceCardId: string,
+    targetCardId: string,
+    userId: string
+  ): { targetCard: RetroCard; removedFromColumnId: string } {
+    if (this.board.isCompleted) {
+      throw new Error('Board is completed');
+    }
+
+    const { card: sourceCard, column: sourceColumn } = this.findCard(sourceCardId);
+    const { card: targetCard } = this.findCard(targetCardId);
+
+    // Combine text: target text + separator + source text
+    targetCard.text = `${targetCard.text}\n--------\n${sourceCard.text}`;
+
+    // Sum votes from both cards
+    targetCard.votes += sourceCard.votes;
+    targetCard.votedBy = [...targetCard.votedBy, ...sourceCard.votedBy];
+
+    // Concatenate comments from both cards
+    targetCard.comments = [...targetCard.comments, ...sourceCard.comments];
+
+    // Remove source card from its column
+    const removedFromColumnId = sourceColumn.id;
+    sourceColumn.cards = sourceColumn.cards.filter((c) => c.id !== sourceCardId);
+    // Re-index remaining cards' order
+    sourceColumn.cards.forEach((c, i) => {
+      c.order = i;
+    });
+
+    this.touch();
+    return { targetCard, removedFromColumnId };
   }
 
   // --- CSV export/import (implemented in task 2.8) ---

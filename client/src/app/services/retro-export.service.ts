@@ -1,31 +1,42 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { RetroSessionState } from '@shared/types';
 import { AuthService } from './auth.service';
 import { BasePathService } from './base-path.service';
+import { ToastService } from './toast.service';
+import { RetroStateService } from './retro-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class RetroExportService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly basePath = inject(BasePathService);
+  private readonly toastService = inject(ToastService);
+  private readonly retroState = inject(RetroStateService);
 
   /**
    * Export the retrospective board as a CSV file download.
    * Calls GET /api/retro/sessions/:sessionId/export with auth header,
    * receives CSV text, and triggers a browser file download.
    *
-   * Requirements: 13.1, 13.2
+   * Requirements: 1.1, 1.2, 1.3, 1.4
    */
   async exportCSV(sessionId: string): Promise<void> {
     const headers = this.getAuthHeaders();
     const url = this.basePath.getApiUrl(`/api/retro/sessions/${sessionId}/export`);
 
-    const csvText = await firstValueFrom(
-      this.http.get(url, { headers, responseType: 'text' })
-    );
+    try {
+      const csvText = await firstValueFrom(
+        this.http.get(url, { headers, responseType: 'text' })
+      );
 
-    this.triggerDownload(csvText, `retrospective-${sessionId}.csv`, 'text/csv');
+      this.triggerDownload(csvText, `retrospective-${sessionId}.csv`, 'text/csv');
+    } catch (error: unknown) {
+      const message = this.extractErrorMessage(error, 'Failed to export CSV');
+      this.toastService.show('error', message);
+      throw error;
+    }
   }
 
   /**
@@ -33,18 +44,55 @@ export class RetroExportService {
    * Reads the file content as text, then calls POST /api/retro/sessions/:sessionId/import
    * with the CSV data in the request body.
    *
-   * Requirements: 14.1, 14.2, 14.3
+   * Requirements: 2.1, 2.2, 2.3, 2.4
    *
-   * @returns A promise that resolves on success or rejects with an error message.
+   * @returns A promise that resolves on success or rejects with an error.
    */
   async importCSV(sessionId: string, file: File): Promise<void> {
-    const csvData = await this.readFileAsText(file);
-    const headers = this.getAuthHeaders();
-    const url = this.basePath.getApiUrl(`/api/retro/sessions/${sessionId}/import`);
+    let csvData: string;
+    try {
+      csvData = await this.readFileAsText(file);
+    } catch {
+      this.toastService.show('error', 'Failed to read file');
+      throw new Error('Failed to read file');
+    }
 
-    await firstValueFrom(
-      this.http.post<{ success: boolean }>(url, { csvData }, { headers })
-    );
+    const headers = this.getAuthHeaders();
+    const importUrl = this.basePath.getApiUrl(`/api/retro/sessions/${sessionId}/import`);
+
+    try {
+      await firstValueFrom(
+        this.http.post<{ success: boolean }>(importUrl, { csvData }, { headers })
+      );
+    } catch (error: unknown) {
+      if (error instanceof HttpErrorResponse && error.error?.code === 'INVALID_CSV') {
+        this.toastService.show('error', error.error.message);
+      } else if (error instanceof HttpErrorResponse && error.error?.error === 'INVALID_CSV') {
+        this.toastService.show('error', error.error.message);
+      } else {
+        const message = this.extractErrorMessage(error, 'Failed to import CSV');
+        this.toastService.show('error', message);
+      }
+      throw error;
+    }
+
+    // Refresh board state after successful import
+    await this.refreshBoardState(sessionId, headers);
+  }
+
+  /**
+   * Fetch the latest session state from the server and apply it to the state service.
+   */
+  private async refreshBoardState(sessionId: string, headers: HttpHeaders): Promise<void> {
+    const stateUrl = this.basePath.getApiUrl(`/api/retro/sessions/${sessionId}`);
+    try {
+      const state = await firstValueFrom(
+        this.http.get<RetroSessionState>(stateUrl, { headers })
+      );
+      this.retroState.applyState(state);
+    } catch {
+      // State refresh failure is non-critical; the board will sync on next WS event
+    }
   }
 
   /**
@@ -82,5 +130,22 @@ export class RetroExportService {
     return new HttpHeaders({
       Authorization: `Bearer ${token}`,
     });
+  }
+
+  /**
+   * Extract an error message from an HTTP error response.
+   * Falls back to the provided default message if no server message is available.
+   */
+  private extractErrorMessage(error: unknown, defaultMessage: string): string {
+    if (error instanceof HttpErrorResponse) {
+      // Server may return JSON with a 'message' field or plain text
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+        return error.error.message;
+      }
+      if (typeof error.error === 'string' && error.error.length > 0) {
+        return error.error;
+      }
+    }
+    return defaultMessage;
   }
 }

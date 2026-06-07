@@ -1,4 +1,4 @@
-import { Component, input, inject, signal, computed, ElementRef, viewChild, HostListener } from '@angular/core';
+import { Component, input, inject, signal, computed, ElementRef, viewChild, HostListener, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RetroCard } from '@shared/types';
@@ -12,6 +12,7 @@ import { RetroStateService } from '../../services/retro-state.service';
   template: `
     <div
       class="retro-card"
+      [class.owner-highlight]="isOwnerHighlighted()"
       [attr.data-card-id]="card().id"
       draggable="true"
       (dragstart)="onDragStart($event)"
@@ -27,7 +28,7 @@ import { RetroStateService } from '../../services/retro-state.service';
         (keydown.enter)="onTextEnter($event)"
         (mousedown)="$event.stopPropagation()"
         draggable="false"
-        rows="3"
+        rows="4"
         placeholder="Enter your thought..."
         aria-label="Card text"
       ></textarea>
@@ -165,7 +166,7 @@ import { RetroStateService } from '../../services/retro-state.service';
   `,
   styles: [`
     .retro-card {
-      padding: 0.375rem 0.5rem;
+      padding: 0.375rem 0;
       background: #e8ecf0;
       border: 1px solid #d0d5dd;
       border-radius: 6px;
@@ -179,6 +180,11 @@ import { RetroStateService } from '../../services/retro-state.service';
       cursor: grabbing;
     }
 
+    .retro-card.owner-highlight {
+      background: #d0e8ff;
+      border-color: #a8d4f5;
+    }
+
     .retro-card.dragging {
       opacity: 0.4;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -189,22 +195,22 @@ import { RetroStateService } from '../../services/retro-state.service';
       width: 100%;
       border: none;
       background: transparent;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-family: inherit;
       resize: none;
       outline: none;
-      padding: 0.2rem 0;
+      padding: 0.2rem 0.375rem;
       margin: 0 0 0.125rem;
       word-break: break-word;
       line-height: 1.4;
       color: #1a1a2e;
-      min-height: 2.8em;
+      min-height: 4.5em;
+      box-sizing: border-box;
     }
 
     .retro-card__text:focus {
       background: #fff;
       border-radius: 3px;
-      padding: 0.125rem 0.25rem;
     }
 
     .retro-card__text:disabled {
@@ -219,14 +225,16 @@ import { RetroStateService } from '../../services/retro-state.service';
       color: #666;
       margin-bottom: 0.25rem;
       font-style: italic;
+      padding: 0 0.375rem;
     }
 
     /* Actions row */
     .retro-card__actions {
       display: flex;
       align-items: center;
-      gap: 0.2rem;
+      gap: 0.15rem;
       margin-top: 0;
+      padding: 0 0.375rem;
     }
 
     .retro-card__vote-section {
@@ -243,7 +251,7 @@ import { RetroStateService } from '../../services/retro-state.service';
       background: transparent;
       cursor: pointer;
       font-size: 0.7rem;
-      padding: 0.05rem;
+      padding: 0.025rem;
       min-width: 24px;
       min-height: 24px;
       display: inline-flex;
@@ -321,7 +329,7 @@ import { RetroStateService } from '../../services/retro-state.service';
     /* Comments section */
     .retro-card__comments {
       margin-top: 0.375rem;
-      padding-top: 0.25rem;
+      padding: 0.25rem 0.375rem 0;
       border-top: 1px solid #ccc;
     }
 
@@ -438,8 +446,28 @@ export class RetroCardComponent {
   /** Common emojis for quick insertion */
   readonly commonEmojis = ['👍', '👎', '❤️', '🎉', '🤔', '😊', '🔥', '⭐', '✅', '❌', '💡', '🚀'];
 
+  constructor() {
+    afterNextRender(() => {
+      const lastAddedId = this.retroState.lastAddedOwnCardId();
+      if (lastAddedId && lastAddedId === this.card().id) {
+        const textAreaEl = this.textAreaRef()?.nativeElement;
+        if (textAreaEl) {
+          textAreaEl.focus();
+          textAreaEl.selectionStart = 0;
+          textAreaEl.selectionEnd = 0;
+        }
+        this.retroState.lastAddedOwnCardId.set(null);
+      }
+    });
+  }
+
   /** Computed: whether board is completed */
   readonly isCompleted = this.retroState.isCompleted;
+
+  /** Computed: whether this card is highlighted as owned by the current user */
+  readonly isOwnerHighlighted = computed(() => {
+    return this.retroState.ownNewCardIds().has(this.card().id);
+  });
 
   /** Computed: whether voting is enabled */
   readonly votingEnabled = this.retroState.votingEnabled;

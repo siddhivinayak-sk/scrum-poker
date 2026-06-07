@@ -75,6 +75,9 @@ A real-time collaborative tool for agile teams. Includes **Scrum Poker** for sto
 - **Edit cards**: Click on card text to edit inline
 - **Delete cards**: Card author or moderator can delete cards
 - **Drag-and-drop**: Move cards between columns or reorder within a column
+- **Merge cards**: Drag one card onto another to merge their text (with confirmation popup)
+- **Auto-focus**: Newly created cards automatically receive focus for immediate typing
+- **Owner highlight**: Cards you just added are visually highlighted with a distinct background
 - **Comments**: Add threaded comments to any card
 - **Emoji insertion**: Quick emoji picker on each card
 
@@ -384,9 +387,18 @@ Continue estimating stories from the issue list. The progress indicator shows `{
 ### Step 3: Add Cards
 
 1. Click the **+** button on any column to add a new card
-2. Type your thought in the card's text area
+2. Type your thought in the card's text area (auto-focused for immediate typing)
 3. Press Enter or click away to save
 4. Add as many cards as needed to any column
+5. Your own cards are highlighted with a distinct background color
+
+### Step 3b: Merge Cards (Optional)
+
+1. Drag one card and drop it onto another card
+2. A confirmation popup shows a preview of the merged text
+3. Click **"Merge"** to combine the cards (target text + separator + source text)
+4. Click **"Cancel"** to leave both cards unchanged
+5. Merging is disabled on completed boards
 
 ### Step 4: Moderator Workflow
 
@@ -503,6 +515,7 @@ The moderator controls the flow using the toolbar buttons:
 | `retro:card:edit` | `{ cardId, text }` | Edit card text |
 | `retro:card:remove` | `{ cardId }` | Remove a card |
 | `retro:card:move` | `{ cardId, targetColumnId, targetIndex }` | Move card |
+| `retro:card:merge` | `{ sourceCardId, targetCardId }` | Merge two cards |
 | `retro:card:vote` | `{ cardId }` | Vote on a card |
 | `retro:card:unvote` | `{ cardId }` | Remove vote from a card |
 | `retro:comment:add` | `{ cardId, text }` | Add comment to a card |
@@ -527,6 +540,7 @@ The moderator controls the flow using the toolbar buttons:
 | `retro:card:edited` | `{ cardId, text }` | Card text updated |
 | `retro:card:removed` | `{ cardId }` | Card was removed |
 | `retro:card:moved` | `{ cardId, targetColumnId, targetIndex }` | Card was moved |
+| `retro:card:merged` | `{ targetCard, removedCardId, removedFromColumnId }` | Cards were merged |
 | `retro:card:voted` | `{ cardId, votes, votedBy, votesRemaining }` | Vote updated |
 | `retro:comment:added` | `{ cardId, comment }` | Comment added |
 | `retro:comment:removed` | `{ cardId, commentId }` | Comment removed |
@@ -559,6 +573,16 @@ The moderator controls the flow using the toolbar buttons:
 ## Deployment
 
 ### Docker
+
+The Docker image is available on Docker Hub: [siddhivinayaksk/scrum-pocker](https://hub.docker.com/r/siddhivinayaksk/scrum-pocker)
+
+```bash
+# Pull the latest image
+docker pull siddhivinayaksk/scrum-pocker:latest
+
+# Or pull a specific version
+docker pull siddhivinayaksk/scrum-pocker:0.0.3
+```
 
 ```bash
 docker build -t scrum-poker .
@@ -623,4 +647,7 @@ The project uses a combination of:
 25. Inactive session cleanup (30 min + 0 participants)
 26. Context editable only by moderator
 27. Icon buttons have accessibility attributes
+28. Merge operation correctness (combined text with separator, source removed)
+29. Cancel merge is a no-op (board state unchanged)
+30. Completed board prevents merge
 

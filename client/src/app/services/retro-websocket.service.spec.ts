@@ -346,6 +346,13 @@ describe('RetroWebSocketService', () => {
       expect(sent.data).toEqual({});
     });
 
+    it('sendCardMerge sends retro:card:merge event', () => {
+      service.sendCardMerge('source-card-1', 'target-card-2');
+      const sent = JSON.parse(getLatestMockWs().sentMessages[0]);
+      expect(sent.event).toBe('retro:card:merge');
+      expect(sent.data).toEqual({ sourceCardId: 'source-card-1', targetCardId: 'target-card-2' });
+    });
+
     it('sendConfigUpdate sends retro:config:update event', () => {
       service.sendConfigUpdate({ hideVoteCount: true, columnLayout: 'horizontal' });
       const sent = JSON.parse(getLatestMockWs().sentMessages[0]);
