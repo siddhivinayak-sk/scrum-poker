@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SessionResumeListComponent } from './session-resume-list.component';
+import { AuthService } from '../../services/auth.service';
 import { BasePathService } from '../../services/base-path.service';
 import { SessionSummary, DEFAULT_SESSION_CONFIG } from '@shared/types';
 
@@ -32,6 +33,10 @@ describe('SessionResumeListComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([{ path: 'session/:id', component: SessionResumeListComponent }]),
+        {
+          provide: AuthService,
+          useValue: { getToken: () => 'mock-token-123' },
+        },
         {
           provide: BasePathService,
           useValue: { getBasePath: () => '', getApiUrl: (path: string) => path },

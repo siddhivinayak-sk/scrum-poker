@@ -189,7 +189,12 @@ describe('RetroStateService', () => {
     });
 
     it('should compute isModerator as false when user is not owner', () => {
-      const state = createMockState({ ownerId: 'user-2' });
+      const state = createMockState({
+        ownerId: 'user-2',
+        participants: [
+          { id: 'user-1', displayName: 'TestUser', role: 'participant', isAnonymous: false },
+        ],
+      });
       emitEvent('retro:session:state', { state });
 
       expect(service.isModerator()).toBe(false);
@@ -343,8 +348,7 @@ describe('RetroStateService', () => {
 
       emitEvent('retro:card:moved', {
         cardId: 'card-1',
-        fromColumnId: 'col-1',
-        toColumnId: 'col-2',
+        targetColumnId: 'col-2',
         targetIndex: 0,
       });
 
@@ -365,8 +369,7 @@ describe('RetroStateService', () => {
 
       emitEvent('retro:card:moved', {
         cardId: 'card-1',
-        fromColumnId: 'col-1',
-        toColumnId: 'col-2',
+        targetColumnId: 'col-2',
         targetIndex: 0,
       });
 
@@ -603,6 +606,83 @@ describe('RetroStateService', () => {
       });
 
       expect(service.participants().length).toBe(1);
+    });
+  });
+
+  describe('retro:card:merged', () => {
+    it('should update the target card with merged data', () => {
+      const state = createMockState();
+      const targetCard = createMockCard({ id: 'card-1', text: 'Target text', columnId: 'col-1', votes: 1 });
+      state.board.columns[0].cards = [targetCard];
+      const sourceCard = createMockCard({ id: 'card-2', text: 'Source text', columnId: 'col-1', votes: 2, order: 1 });
+      state.board.columns[0].cards.push(sourceCard);
+      emitEvent('retro:session:state', { state });
+
+      const mergedTargetCard: RetroCard = {
+        ...targetCard,
+        text: 'Target text\n--------\nSource text',
+        votes: 3,
+      };
+      emitEvent('retro:card:merged', {
+        targetCard: mergedTargetCard,
+        removedCardId: 'card-2',
+        removedFromColumnId: 'col-1',
+      });
+
+      const col1Cards = service.cardsByColumn('col-1');
+      expect(col1Cards.length).toBe(1);
+      expect(col1Cards[0].text).toBe('Target text\n--------\nSource text');
+      expect(col1Cards[0].votes).toBe(3);
+    });
+
+    it('should remove the source card from its column', () => {
+      const state = createMockState();
+      state.board.columns[0].cards = [
+        createMockCard({ id: 'card-1', text: 'Target', columnId: 'col-1' }),
+      ];
+      state.board.columns[1].cards = [
+        createMockCard({ id: 'card-2', text: 'Source', columnId: 'col-2' }),
+      ];
+      emitEvent('retro:session:state', { state });
+
+      const mergedTargetCard = createMockCard({
+        id: 'card-1',
+        text: 'Target\n--------\nSource',
+        columnId: 'col-1',
+      });
+      emitEvent('retro:card:merged', {
+        targetCard: mergedTargetCard,
+        removedCardId: 'card-2',
+        removedFromColumnId: 'col-2',
+      });
+
+      expect(service.cardsByColumn('col-2')).toEqual([]);
+      expect(service.cardsByColumn('col-1')[0].text).toBe('Target\n--------\nSource');
+    });
+
+    it('should not affect cards in unrelated columns', () => {
+      const state = createMockState();
+      state.board.columns[0].cards = [
+        createMockCard({ id: 'card-1', text: 'Target', columnId: 'col-1' }),
+        createMockCard({ id: 'card-2', text: 'Source', columnId: 'col-1', order: 1 }),
+      ];
+      state.board.columns[2].cards = [
+        createMockCard({ id: 'card-3', text: 'Unrelated', columnId: 'col-3' }),
+      ];
+      emitEvent('retro:session:state', { state });
+
+      const mergedTargetCard = createMockCard({
+        id: 'card-1',
+        text: 'Target\n--------\nSource',
+        columnId: 'col-1',
+      });
+      emitEvent('retro:card:merged', {
+        targetCard: mergedTargetCard,
+        removedCardId: 'card-2',
+        removedFromColumnId: 'col-1',
+      });
+
+      expect(service.cardsByColumn('col-3')[0].text).toBe('Unrelated');
     });
   });
 

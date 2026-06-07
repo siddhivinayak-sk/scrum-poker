@@ -163,30 +163,28 @@ describe('RetroSession - Constructor and State Management', () => {
       expect(visibleState).toEqual(fullState);
     });
 
-    it('returns full state when cards have been revealed', () => {
-      // We need to simulate cards being revealed. Since revealCards() is a stub,
-      // we test with hideCardsInitially: false which always returns full state.
-      const session = createSession({ hideCardsInitially: false });
-      const state = session.getVisibleState('u1');
-      expect(state.board.columns).toEqual(session.getSessionState().board.columns);
+    it('returns full state when hideCardsInitially is true (client handles filtering)', () => {
+      const session = createSession({ hideCardsInitially: true });
+      session.addParticipant(makeUser({ id: 'u1', displayName: 'Alice' }));
+
+      const fullState = session.getSessionState();
+      const visibleState = session.getVisibleState('u1');
+      expect(visibleState).toEqual(fullState);
     });
 
-    it('filters cards to only show own cards when hidden', () => {
+    it('returns all cards from all users regardless of hideCardsInitially', () => {
       const session = createSession({ hideCardsInitially: true });
       session.addParticipant(makeUser({ id: 'u1', displayName: 'Alice' }));
       session.addParticipant(makeUser({ id: 'u2', displayName: 'Bob' }));
+      const columnId = session.getSessionState().board.columns[0].id;
+      session.addCard(columnId, 'Alice card', 'u1', 'Alice');
+      session.addCard(columnId, 'Bob card', 'u2', 'Bob');
 
-      // Since addCard is a stub, we need to test the filtering logic directly.
-      // We'll verify the structure is correct with empty cards.
       const visibleState = session.getVisibleState('u1');
-      expect(visibleState.board.columns).toHaveLength(3);
-      // With no cards, all columns should have empty cards arrays
-      visibleState.board.columns.forEach((col) => {
-        expect(col.cards).toEqual([]);
-      });
+      expect(visibleState.board.columns[0].cards).toHaveLength(2);
     });
 
-    it('preserves column structure when filtering cards', () => {
+    it('preserves column structure', () => {
       const session = createSession({ hideCardsInitially: true });
       const visibleState = session.getVisibleState('u1');
 
@@ -195,7 +193,7 @@ describe('RetroSession - Constructor and State Management', () => {
       expect(visibleState.board.columns[2].name).toBe('Continue');
     });
 
-    it('includes all other state fields when filtering', () => {
+    it('includes all state fields', () => {
       const session = createSession({ hideCardsInitially: true });
       session.addParticipant(makeUser({ id: 'u1', displayName: 'Alice' }));
 
@@ -583,7 +581,7 @@ describe('RetroSession - Moderator Workflow', () => {
     expect(() => session.addCard(columnId, 'New', 'user-1', 'Alice')).toThrow('Board is completed');
   });
 
-  it('getVisibleState shows all cards after reveal', () => {
+  it('getVisibleState shows all cards regardless of reveal state', () => {
     const session = createSession({ hideCardsInitially: true });
     session.addParticipant(makeUser({ id: 'user-1', displayName: 'Alice' }));
     session.addParticipant(makeUser({ id: 'user-2', displayName: 'Bob' }));
@@ -591,12 +589,11 @@ describe('RetroSession - Moderator Workflow', () => {
     session.addCard(columnId, 'Alice card', 'user-1', 'Alice');
     session.addCard(columnId, 'Bob card', 'user-2', 'Bob');
 
-    // Before reveal: user-1 only sees own cards
+    // Before reveal: user-1 sees all cards (client handles visibility)
     const beforeReveal = session.getVisibleState('user-1');
-    expect(beforeReveal.board.columns[0].cards).toHaveLength(1);
-    expect(beforeReveal.board.columns[0].cards[0].text).toBe('Alice card');
+    expect(beforeReveal.board.columns[0].cards).toHaveLength(2);
 
-    // After reveal: user-1 sees all cards
+    // After reveal: user-1 still sees all cards
     session.revealCards();
     const afterReveal = session.getVisibleState('user-1');
     expect(afterReveal.board.columns[0].cards).toHaveLength(2);
@@ -803,5 +800,150 @@ describe('RetroSession - Comment Operations', () => {
     expect(() => session.removeComment(card.id, comment.id, 'user-2')).toThrow(
       'Board is completed'
     );
+  });
+});
+
+describe('RetroSession - mergeCards()', () => {
+  it('combines text with separator (target + separator + source)', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const sourceCard = session.addCard(columnId, 'Source text', 'user-1', 'Alice');
+    const targetCard = session.addCard(columnId, 'Target text', 'user-1', 'Alice');
+
+    const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+    expect(result.targetCard.text).toBe('Target text\n--------\nSource text');
+  });
+
+  it('sums votes from both cards', () => {
+    const session = createSession();
+    session.addParticipant(makeUser({ id: 'user-1', displayName: 'Alice' }));
+    session.addParticipant(makeUser({ id: 'user-2', displayName: 'Bob' }));
+    session.addParticipant(makeUser({ id: 'user-3', displayName: 'Charlie' }));
+    const columnId = session.getSessionState().board.columns[0].id;
+    const sourceCard = session.addCard(columnId, 'Source', 'user-1', 'Alice');
+    const targetCard = session.addCard(columnId, 'Target', 'user-1', 'Alice');
+
+    // Vote on source (2 votes)
+    session.voteCard(sourceCard.id, 'user-1');
+    session.voteCard(sourceCard.id, 'user-2');
+    // Vote on target (1 vote)
+    session.voteCard(targetCard.id, 'user-3');
+
+    const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+    expect(result.targetCard.votes).toBe(3);
+    expect(result.targetCard.votedBy).toContain('user-1');
+    expect(result.targetCard.votedBy).toContain('user-2');
+    expect(result.targetCard.votedBy).toContain('user-3');
+  });
+
+  it('concatenates comments from both cards', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const sourceCard = session.addCard(columnId, 'Source', 'user-1', 'Alice');
+    const targetCard = session.addCard(columnId, 'Target', 'user-1', 'Alice');
+
+    session.addComment(sourceCard.id, 'Source comment 1', 'user-2', 'Bob');
+    session.addComment(sourceCard.id, 'Source comment 2', 'user-2', 'Bob');
+    session.addComment(targetCard.id, 'Target comment 1', 'user-3', 'Charlie');
+
+    const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+    expect(result.targetCard.comments).toHaveLength(3);
+    const commentTexts = result.targetCard.comments.map((c) => c.text);
+    expect(commentTexts).toContain('Target comment 1');
+    expect(commentTexts).toContain('Source comment 1');
+    expect(commentTexts).toContain('Source comment 2');
+  });
+
+  it('removes source card from its column', () => {
+    const session = createSession();
+    const state = session.getSessionState();
+    const col1Id = state.board.columns[0].id;
+    const sourceCard = session.addCard(col1Id, 'Source', 'user-1', 'Alice');
+    const targetCard = session.addCard(col1Id, 'Target', 'user-1', 'Alice');
+
+    const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+    expect(result.removedFromColumnId).toBe(col1Id);
+    const updatedState = session.getSessionState();
+    const col1Cards = updatedState.board.columns[0].cards;
+    expect(col1Cards).toHaveLength(1);
+    expect(col1Cards[0].id).toBe(targetCard.id);
+    // Source card should not exist anywhere
+    const allCardIds = updatedState.board.columns.flatMap((col) => col.cards.map((c) => c.id));
+    expect(allCardIds).not.toContain(sourceCard.id);
+  });
+
+  it('rejects merge on completed board', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const sourceCard = session.addCard(columnId, 'Source', 'user-1', 'Alice');
+    const targetCard = session.addCard(columnId, 'Target', 'user-1', 'Alice');
+
+    session.completeBoard();
+
+    expect(() => session.mergeCards(sourceCard.id, targetCard.id, 'user-1')).toThrow(
+      'Board is completed'
+    );
+  });
+
+  it('rejects merge with invalid source card ID', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const targetCard = session.addCard(columnId, 'Target', 'user-1', 'Alice');
+
+    expect(() => session.mergeCards('non-existent-id', targetCard.id, 'user-1')).toThrow(
+      'Card not found'
+    );
+  });
+
+  it('rejects merge with invalid target card ID', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const sourceCard = session.addCard(columnId, 'Source', 'user-1', 'Alice');
+
+    expect(() => session.mergeCards(sourceCard.id, 'non-existent-id', 'user-1')).toThrow(
+      'Card not found'
+    );
+  });
+
+  it('merge works across different columns', () => {
+    const session = createSession();
+    const state = session.getSessionState();
+    const col1Id = state.board.columns[0].id;
+    const col2Id = state.board.columns[1].id;
+    const sourceCard = session.addCard(col1Id, 'Source in col1', 'user-1', 'Alice');
+    const targetCard = session.addCard(col2Id, 'Target in col2', 'user-1', 'Alice');
+
+    const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+    expect(result.targetCard.text).toBe('Target in col2\n--------\nSource in col1');
+    expect(result.removedFromColumnId).toBe(col1Id);
+    const updatedState = session.getSessionState();
+    expect(updatedState.board.columns[0].cards).toHaveLength(0);
+    expect(updatedState.board.columns[1].cards).toHaveLength(1);
+  });
+
+  it('re-indexes remaining cards after removing source', () => {
+    const session = createSession();
+    const columnId = session.getSessionState().board.columns[0].id;
+    const card1 = session.addCard(columnId, 'First', 'user-1', 'Alice');
+    const card2 = session.addCard(columnId, 'Second (source)', 'user-1', 'Alice');
+    const card3 = session.addCard(columnId, 'Third', 'user-1', 'Alice');
+    // Target in a different column
+    const col2Id = session.getSessionState().board.columns[1].id;
+    const targetCard = session.addCard(col2Id, 'Target', 'user-1', 'Alice');
+
+    session.mergeCards(card2.id, targetCard.id, 'user-1');
+
+    const updatedState = session.getSessionState();
+    const col1Cards = updatedState.board.columns[0].cards;
+    expect(col1Cards).toHaveLength(2);
+    expect(col1Cards[0].order).toBe(0);
+    expect(col1Cards[0].text).toBe('First');
+    expect(col1Cards[1].order).toBe(1);
+    expect(col1Cards[1].text).toBe('Third');
   });
 });

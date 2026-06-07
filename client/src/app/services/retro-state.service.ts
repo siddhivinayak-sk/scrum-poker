@@ -20,11 +20,20 @@ export class RetroStateService implements OnDestroy {
   private readonly _state = signal<RetroSessionState | null>(null);
   private readonly _currentUserId = signal<string | null>(null);
 
+  /** Track card IDs created by the current user (for owner highlight) */
+  private readonly _ownNewCardIds = signal<Set<string>>(new Set());
+
+  /** Most recently added card ID by current user (for auto-focus) */
+  readonly lastAddedOwnCardId = signal<string | null>(null);
+
   /** Full session state signal */
   readonly state: Signal<RetroSessionState | null> = this._state.asReadonly();
 
   /** Current user's ID */
   readonly currentUserId: Signal<string | null> = this._currentUserId.asReadonly();
+
+  /** Set of card IDs created by the current user (readonly accessor for owner highlight) */
+  readonly ownNewCardIds: Signal<Set<string>> = this._ownNewCardIds.asReadonly();
 
   /** Board columns */
   readonly columns = computed<RetroColumn[]>(() => {
@@ -113,6 +122,14 @@ export class RetroStateService implements OnDestroy {
     this._currentUserId.set(null);
   }
 
+  /**
+   * Apply a full session state update from an external source (e.g., HTTP refresh after import).
+   */
+  applyState(state: RetroSessionState): void {
+    this._state.set(state);
+    this.syncCurrentUserId();
+  }
+
   private subscribeToEvents(): void {
     // Full state sync on connect/reconnect
     this.subscriptions.push(
@@ -134,6 +151,15 @@ export class RetroStateService implements OnDestroy {
             ),
           },
         }));
+
+        // Track own cards for owner highlight and auto-focus
+        const currentUserId = this._currentUserId();
+        if (currentUserId && card.authorId === currentUserId) {
+          const updatedSet = new Set(this._ownNewCardIds());
+          updatedSet.add(card.id);
+          this._ownNewCardIds.set(updatedSet);
+          this.lastAddedOwnCardId.set(card.id);
+        }
       })
     );
 
@@ -435,6 +461,37 @@ export class RetroStateService implements OnDestroy {
           participants,
         }));
       })
+    );
+
+    // Card merged
+    this.subscriptions.push(
+      this.ws
+        .on<{ targetCard: RetroCard; removedCardId: string; removedFromColumnId: string }>(
+          'retro:card:merged'
+        )
+        .subscribe(({ targetCard, removedCardId, removedFromColumnId }) => {
+          this.updateState((state) => ({
+            ...state,
+            board: {
+              ...state.board,
+              columns: state.board.columns.map((col) => {
+                let cards = col.cards;
+
+                // Update target card in its column
+                cards = cards.map((card) =>
+                  card.id === targetCard.id ? targetCard : card
+                );
+
+                // Remove the source card from its column
+                if (col.id === removedFromColumnId) {
+                  cards = cards.filter((card) => card.id !== removedCardId);
+                }
+
+                return cards !== col.cards ? { ...col, cards } : col;
+              }),
+            },
+          }));
+        })
     );
   }
 

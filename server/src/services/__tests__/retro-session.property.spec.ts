@@ -530,15 +530,15 @@ describe('Property 16: Disabled voting prevents all votes', () => {
 });
 
 /**
- * Property 17: Card visibility when hidden
+ * Property 17: Card visibility — server returns all cards
  *
- * For any board with "hide cards initially" active and cards not yet revealed,
- * the visible cards should be exactly those authored by that participant.
+ * For any board with "hide cards initially" active, the server always sends
+ * ALL cards to all participants. The client handles visibility filtering.
  *
  * **Validates: Requirements 10.1, 10.3**
  */
 describe('Property 17: Card visibility when hidden', () => {
-  it('each participant sees only their own cards when cards are hidden', () => {
+  it('all participants see all cards via getVisibleState (client handles filtering)', () => {
     fc.assert(
       fc.property(
         fc.array(fc.string({ minLength: 1, maxLength: 30 }), { minLength: 1, maxLength: 5 }),
@@ -558,21 +558,14 @@ describe('Property 17: Card visibility when hidden', () => {
             session.addCard(columnId, text, 'user-2', 'Bob');
           }
 
-          // User 1 should see only their own cards
-          const visibleToUser1 = session.getVisibleState('user-1');
-          const user1VisibleCards = visibleToUser1.board.columns[0].cards;
-          expect(user1VisibleCards.length).toBe(user1Cards.length);
-          for (const card of user1VisibleCards) {
-            expect(card.authorId).toBe('user-1');
-          }
+          const totalCards = user1Cards.length + user2Cards.length;
 
-          // User 2 should see only their own cards
+          // Both users see ALL cards (server no longer filters)
+          const visibleToUser1 = session.getVisibleState('user-1');
+          expect(visibleToUser1.board.columns[0].cards.length).toBe(totalCards);
+
           const visibleToUser2 = session.getVisibleState('user-2');
-          const user2VisibleCards = visibleToUser2.board.columns[0].cards;
-          expect(user2VisibleCards.length).toBe(user2Cards.length);
-          for (const card of user2VisibleCards) {
-            expect(card.authorId).toBe('user-2');
-          }
+          expect(visibleToUser2.board.columns[0].cards.length).toBe(totalCards);
         },
       ),
       { numRuns: 100 },
@@ -581,15 +574,16 @@ describe('Property 17: Card visibility when hidden', () => {
 });
 
 /**
- * Property 18: Card reveal makes all visible
+ * Property 18: getVisibleState returns full state regardless of reveal
  *
- * For any board state, after the moderator triggers card reveal,
- * all cards in all columns should be visible to all participants.
+ * For any board state, getVisibleState always returns all cards.
+ * The reveal action only changes the board.cardsRevealed flag which
+ * the client uses to decide display behavior.
  *
  * **Validates: Requirements 10.2**
  */
 describe('Property 18: Card reveal makes all visible', () => {
-  it('after reveal, all cards are visible to all participants', () => {
+  it('getVisibleState returns all cards before and after reveal', () => {
     fc.assert(
       fc.property(
         fc.array(fc.string({ minLength: 1, maxLength: 30 }), { minLength: 1, maxLength: 5 }),
@@ -605,14 +599,14 @@ describe('Property 18: Card reveal makes all visible', () => {
             session.addCard(columnId, text, 'user-1', 'Alice');
           }
 
-          // Before reveal, user-2 sees no cards
+          // Before reveal, user-2 sees all cards (server sends full state)
           const beforeReveal = session.getVisibleState('user-2');
-          expect(beforeReveal.board.columns[0].cards.length).toBe(0);
+          expect(beforeReveal.board.columns[0].cards.length).toBe(cardTexts.length);
 
           // Reveal cards
           session.revealCards();
 
-          // After reveal, user-2 sees all cards
+          // After reveal, user-2 still sees all cards
           const afterReveal = session.getVisibleState('user-2');
           expect(afterReveal.board.columns[0].cards.length).toBe(cardTexts.length);
         },
@@ -683,6 +677,463 @@ describe('Property 19: Completed board rejects modifications', () => {
             case 'addComment':
               expect(() => session.addComment(card.id, 'Comment', 'user-1', 'Alice')).toThrow('Board is completed');
               break;
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
+/**
+ * Feature: retro-board-improvements, Property 4: Completed board rejects all merge attempts
+ *
+ * For any board state where isCompleted is true, and for any pair of card IDs,
+ * attempting a merge operation SHALL be rejected (throw an error), and the board
+ * state SHALL remain unchanged.
+ *
+ * **Validates: Requirements 3.7**
+ */
+describe('Feature: retro-board-improvements, Property 4: Completed board rejects all merge attempts', () => {
+  it('mergeCards throws "Board is completed" and leaves board state unchanged for any card pair', () => {
+    fc.assert(
+      fc.property(
+        // Generate 1-3 columns, each with 1-4 cards
+        fc.integer({ min: 1, max: 3 }),
+        fc.array(fc.string({ minLength: 1, maxLength: 50 }), { minLength: 2, maxLength: 8 }),
+        (numExtraColumns: number, cardTexts: string[]) => {
+          // Setup session with cards distributed across columns
+          const session = new RetroSession('session-1', 'owner-1', makeConfig());
+          session.addParticipant({ id: 'user-1', displayName: 'Alice', role: 'participant', isAnonymous: false });
+
+          // Add extra columns beyond the default template columns
+          for (let i = 0; i < numExtraColumns; i++) {
+            session.addColumn(`Extra Column ${i}`);
+          }
+
+          const state = session.getSessionState();
+          const columns = state.board.columns;
+
+          // Add cards across columns
+          const allCardIds: string[] = [];
+          for (let i = 0; i < cardTexts.length; i++) {
+            const colIdx = i % columns.length;
+            const card = session.addCard(columns[colIdx].id, cardTexts[i], 'user-1', 'Alice');
+            allCardIds.push(card.id);
+          }
+
+          // We need at least 2 cards to attempt a merge
+          fc.pre(allCardIds.length >= 2);
+
+          // Complete the board
+          session.completeBoard();
+
+          // Capture board state before merge attempt (deep snapshot)
+          const boardStateBefore = JSON.parse(JSON.stringify(session.getSessionState().board));
+
+          // Attempt merge with first two card IDs
+          const sourceCardId = allCardIds[0];
+          const targetCardId = allCardIds[1];
+
+          // Merge should throw
+          expect(() => session.mergeCards(sourceCardId, targetCardId, 'user-1')).toThrow('Board is completed');
+
+          // Board state should be completely unchanged
+          const boardStateAfter = JSON.parse(JSON.stringify(session.getSessionState().board));
+          expect(boardStateAfter).toEqual(boardStateBefore);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('mergeCards throws for any arbitrary pair of card IDs on completed board', () => {
+    fc.assert(
+      fc.property(
+        // Generate arbitrary card ID pairs (including potentially non-existent ones)
+        fc.uuid(),
+        fc.uuid(),
+        (sourceId: string, targetId: string) => {
+          const session = new RetroSession('session-1', 'owner-1', makeConfig());
+          session.addParticipant({ id: 'user-1', displayName: 'Alice', role: 'participant', isAnonymous: false });
+
+          // Add some cards so the board isn't empty
+          const state = session.getSessionState();
+          const columnId = state.board.columns[0].id;
+          session.addCard(columnId, 'Card A', 'user-1', 'Alice');
+          session.addCard(columnId, 'Card B', 'user-1', 'Alice');
+
+          // Complete the board
+          session.completeBoard();
+
+          // Capture board state before merge attempt
+          const boardStateBefore = JSON.parse(JSON.stringify(session.getSessionState().board));
+
+          // Merge should throw "Board is completed" regardless of card IDs
+          expect(() => session.mergeCards(sourceId, targetId, 'user-1')).toThrow('Board is completed');
+
+          // Board state should remain unchanged
+          const boardStateAfter = JSON.parse(JSON.stringify(session.getSessionState().board));
+          expect(boardStateAfter).toEqual(boardStateBefore);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
+/**
+ * Feature: retro-board-improvements
+ * Property 2: Merge produces combined text and removes source card
+ *
+ * For any two cards (source and target) in any board state that is not completed,
+ * performing a merge SHALL produce a target card whose text equals the original
+ * target text followed by the separator "\n--------\n" followed by the source card text,
+ * AND the source card SHALL no longer exist in any column of the board.
+ *
+ * **Validates: Requirements 3.3, 3.4**
+ */
+describe('Feature: retro-board-improvements, Property 2: Merge produces combined text and removes source card', () => {
+  // Arbitrary for generating card text (including special characters)
+  const arbCardText = fc.string({ minLength: 1, maxLength: 200 });
+
+  // Arbitrary for generating number of columns to use (1 = same column, 2 = different columns)
+  const arbSameColumn = fc.boolean();
+
+  it('merge produces target text + separator + source text and removes source card', () => {
+    fc.assert(
+      fc.property(
+        arbCardText,
+        arbCardText,
+        arbSameColumn,
+        (sourceText: string, targetText: string, sameColumn: boolean) => {
+          const session = new RetroSession('session-1', 'owner-1', makeConfig());
+          session.addParticipant({ id: 'user-1', displayName: 'Alice', role: 'participant', isAnonymous: false });
+
+          const state = session.getSessionState();
+          const columns = state.board.columns;
+          const sourceColumnId = columns[0].id;
+          const targetColumnId = sameColumn ? columns[0].id : columns[1].id;
+
+          // Add source and target cards
+          const sourceCard = session.addCard(sourceColumnId, sourceText, 'user-1', 'Alice');
+          const targetCard = session.addCard(targetColumnId, targetText, 'user-1', 'Alice');
+
+          // Perform merge
+          const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+          // Verify merged text = target text + separator + source text
+          const expectedText = `${targetText}\n--------\n${sourceText}`;
+          expect(result.targetCard.text).toBe(expectedText);
+
+          // Verify target card in the board also has the merged text
+          const stateAfter = session.getSessionState();
+          const allCards = stateAfter.board.columns.flatMap((col) => col.cards);
+          const mergedCard = allCards.find((c) => c.id === targetCard.id);
+          expect(mergedCard).toBeDefined();
+          expect(mergedCard!.text).toBe(expectedText);
+
+          // Verify source card no longer exists in any column
+          const allCardIds = allCards.map((c) => c.id);
+          expect(allCardIds).not.toContain(sourceCard.id);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('merge removes source card from the correct column', () => {
+    fc.assert(
+      fc.property(
+        arbCardText,
+        arbCardText,
+        (sourceText: string, targetText: string) => {
+          const session = new RetroSession('session-1', 'owner-1', makeConfig());
+          session.addParticipant({ id: 'user-1', displayName: 'Alice', role: 'participant', isAnonymous: false });
+
+          const state = session.getSessionState();
+          const sourceColumnId = state.board.columns[0].id;
+          const targetColumnId = state.board.columns[1].id;
+
+          const sourceCard = session.addCard(sourceColumnId, sourceText, 'user-1', 'Alice');
+          const targetCard = session.addCard(targetColumnId, targetText, 'user-1', 'Alice');
+
+          const result = session.mergeCards(sourceCard.id, targetCard.id, 'user-1');
+
+          // Verify removedFromColumnId matches the source card's column
+          expect(result.removedFromColumnId).toBe(sourceColumnId);
+
+          // Verify the source column no longer contains the source card
+          const stateAfter = session.getSessionState();
+          const sourceColumn = stateAfter.board.columns.find((c) => c.id === sourceColumnId)!;
+          const sourceCardIds = sourceColumn.cards.map((c) => c.id);
+          expect(sourceCardIds).not.toContain(sourceCard.id);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
+/**
+ * Feature: retro-board-improvements, Property 1: CSV export/import round-trip preserves board data
+ *
+ * For any valid RetroBoard state containing arbitrary columns, cards (with arbitrary text
+ * including special characters, commas, quotes, newlines), vote counts, author names, and
+ * comments, exporting to CSV via exportCSV() and then importing that CSV into an empty board
+ * with matching column names SHALL produce cards whose "Column", "Card Text", "Votes",
+ * "Author", and "Comments" fields match the original board data.
+ *
+ * **Validates: Requirements 1.5, 2.6**
+ */
+describe('Feature: retro-board-improvements, Property 1: CSV export/import round-trip preserves board data', () => {
+  /**
+   * Arbitrary generator for card text that includes special CSV characters:
+   * commas, quotes, newlines, and general unicode.
+   */
+  const cardTextArb = fc.stringOf(
+    fc.oneof(
+      fc.char(),               // any single char
+      fc.constant(','),        // comma
+      fc.constant('"'),        // double quote
+      fc.constant('\n'),       // newline
+      fc.constant('\r'),       // carriage return
+      fc.constant('\r\n'),     // CRLF
+    ),
+    { minLength: 1, maxLength: 80 },
+  ).filter((s) => s.trim().length > 0); // importCSV trims and rejects empty text
+
+  const authorNameArb = fc.stringOf(
+    fc.oneof(
+      fc.char(),
+      fc.constant(','),
+      fc.constant('"'),
+    ),
+    { minLength: 1, maxLength: 30 },
+  ).filter((s) => s.trim().length > 0);
+
+  const commentTextArb = fc.stringOf(
+    fc.oneof(
+      fc.char(),
+      fc.constant(','),
+      fc.constant('"'),
+      fc.constant('\n'),
+    ),
+    { minLength: 1, maxLength: 40 },
+  ).filter((s) => s.trim().length > 0);
+
+  /**
+   * Arbitrary for a card definition (before insertion into board).
+   */
+  const cardDefArb = fc.record({
+    text: cardTextArb,
+    authorName: authorNameArb,
+    votes: fc.integer({ min: 0, max: 20 }),
+    comments: fc.array(commentTextArb, { minLength: 0, maxLength: 3 }),
+  });
+
+  /**
+   * Generate a column name that won't clash with others.
+   * Column names for the test come from the template, so we use a fixed set.
+   */
+  const columnNameArb = fc.stringOf(
+    fc.oneof(
+      fc.char(),
+      fc.constant(','),
+      fc.constant('"'),
+    ),
+    { minLength: 1, maxLength: 20 },
+  ).filter((s) => s.trim().length > 0);
+
+  /**
+   * Helper: Parse CSV text into rows of fields using the same logic the server uses.
+   * We replicate a minimal CSV parser here to verify exported CSV content.
+   */
+  function parseCSVFields(csvData: string): string[][] {
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < csvData.length) {
+      const char = csvData[i];
+
+      if (inQuotes) {
+        if (char === '"') {
+          if (i + 1 < csvData.length && csvData[i + 1] === '"') {
+            currentField += '"';
+            i += 2;
+          } else {
+            inQuotes = false;
+            i++;
+          }
+        } else {
+          currentField += char;
+          i++;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+          i++;
+        } else if (char === ',') {
+          currentRow.push(currentField);
+          currentField = '';
+          i++;
+        } else if (char === '\r') {
+          currentRow.push(currentField);
+          currentField = '';
+          rows.push(currentRow);
+          currentRow = [];
+          if (i + 1 < csvData.length && csvData[i + 1] === '\n') {
+            i += 2;
+          } else {
+            i++;
+          }
+        } else if (char === '\n') {
+          currentRow.push(currentField);
+          currentField = '';
+          rows.push(currentRow);
+          currentRow = [];
+          i++;
+        } else {
+          currentField += char;
+          i++;
+        }
+      }
+    }
+
+    if (currentField !== '' || currentRow.length > 0) {
+      currentRow.push(currentField);
+      rows.push(currentRow);
+    }
+
+    return rows;
+  }
+
+  it('exported CSV fields match original board data for arbitrary cards with special characters', () => {
+    fc.assert(
+      fc.property(
+        // Generate 1-4 cards per column (use the default template columns: Start, Stop, Continue)
+        fc.array(cardDefArb, { minLength: 1, maxLength: 5 }),
+        fc.integer({ min: 0, max: 2 }), // which column to put cards in
+        (cardDefs, columnIdx) => {
+          const session = new RetroSession('session-1', 'owner-1', makeConfig());
+          session.addParticipant({ id: 'user-1', displayName: 'Tester', role: 'participant', isAnonymous: false });
+
+          const state = session.getSessionState();
+          const column = state.board.columns[columnIdx];
+          const columnId = column.id;
+          const columnName = column.name;
+
+          // Add cards with arbitrary data
+          const expectedCards: Array<{ text: string; authorName: string; votes: number; commentsText: string }> = [];
+          for (const def of cardDefs) {
+            const card = session.addCard(columnId, def.text, 'user-1', def.authorName);
+
+            // Add votes manually by voting from different users
+            for (let v = 0; v < def.votes; v++) {
+              const voterId = `voter-${v}`;
+              session.addParticipant({ id: voterId, displayName: `Voter${v}`, role: 'participant', isAnonymous: false });
+              // Need voting to be enabled
+              try {
+                session.voteCard(card.id, voterId);
+              } catch {
+                // May run out of votes for the voter, that's OK
+              }
+            }
+
+            // Add comments
+            for (const commentText of def.comments) {
+              session.addComment(card.id, commentText, 'user-1', 'Tester');
+            }
+
+            // Get actual card state after modifications
+            const updatedState = session.getSessionState();
+            const updatedCard = updatedState.board.columns[columnIdx].cards.find((c) => c.id === card.id)!;
+            const commentsText = updatedCard.comments.map((c) => c.text).join(' | ');
+
+            expectedCards.push({
+              text: updatedCard.text,
+              authorName: updatedCard.authorName,
+              votes: updatedCard.votes,
+              commentsText,
+            });
+          }
+
+          // Export to CSV
+          const csv = session.exportCSV();
+
+          // Parse the CSV back
+          const rows = parseCSVFields(csv);
+
+          // Verify headers
+          expect(rows[0]).toEqual(['Column', 'Card Text', 'Votes', 'Author', 'Comments']);
+
+          // Find data rows for our column
+          const dataRows = rows.slice(1).filter((row) => row[0] === columnName);
+          expect(dataRows.length).toBe(expectedCards.length);
+
+          // Verify each exported row matches the original card data
+          for (let i = 0; i < expectedCards.length; i++) {
+            const row = dataRows[i];
+            const expected = expectedCards[i];
+            expect(row[0]).toBe(columnName);           // Column
+            expect(row[1]).toBe(expected.text);        // Card Text
+            expect(row[2]).toBe(String(expected.votes)); // Votes
+            expect(row[3]).toBe(expected.authorName);  // Author
+            expect(row[4]).toBe(expected.commentsText); // Comments
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('CSV export then import into empty board with matching columns preserves Column and Card Text', () => {
+    fc.assert(
+      fc.property(
+        // Generate cards distributed across columns
+        fc.array(
+          fc.record({
+            text: cardTextArb,
+            columnIdx: fc.integer({ min: 0, max: 2 }),
+          }),
+          { minLength: 1, maxLength: 8 },
+        ),
+        (cardInputs) => {
+          // Build source session with cards
+          const sourceSession = new RetroSession('source-1', 'owner-1', makeConfig());
+          sourceSession.addParticipant({ id: 'user-1', displayName: 'Alice', role: 'participant', isAnonymous: false });
+          const sourceState = sourceSession.getSessionState();
+
+          const expectedByColumn: Map<string, string[]> = new Map();
+
+          for (const input of cardInputs) {
+            const col = sourceState.board.columns[input.columnIdx];
+            sourceSession.addCard(col.id, input.text, 'user-1', 'Alice');
+            if (!expectedByColumn.has(col.name)) {
+              expectedByColumn.set(col.name, []);
+            }
+            expectedByColumn.get(col.name)!.push(input.text);
+          }
+
+          // Export CSV from source
+          const csv = sourceSession.exportCSV();
+
+          // Create target session with same template (same column names)
+          const targetSession = new RetroSession('target-1', 'owner-1', makeConfig());
+
+          // Import CSV into target
+          targetSession.importCSV(csv);
+
+          // Verify imported cards match
+          const targetState = targetSession.getSessionState();
+          for (const col of targetState.board.columns) {
+            const expectedTexts = expectedByColumn.get(col.name) ?? [];
+            const importedTexts = col.cards.map((c) => c.text);
+            // importCSV trims text, so we compare trimmed
+            expect(importedTexts).toEqual(expectedTexts.map((t) => t.trim()));
           }
         },
       ),

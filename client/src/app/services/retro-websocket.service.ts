@@ -153,6 +153,10 @@ export class RetroWebSocketService implements OnDestroy {
     this.send('retro:board:complete', {});
   }
 
+  sendCardMerge(sourceCardId: string, targetCardId: string): void {
+    this.send('retro:card:merge', { sourceCardId, targetCardId });
+  }
+
   sendConfigUpdate(config: Partial<RetroConfiguration>): void {
     this.send('retro:config:update', { config });
   }
