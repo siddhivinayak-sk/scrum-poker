@@ -480,7 +480,11 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       fixture.detectChanges();
 
       const writeTextMock = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      });
 
       await component.copySessionLink();
 
@@ -497,7 +501,11 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       fixture.detectChanges();
 
       const writeTextMock = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
-      Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      });
 
       await component.copySessionLink();
 

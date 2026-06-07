@@ -73,6 +73,7 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
+            "runnerConfig": true,
             "setupFiles": ["src/test-setup.ts"]
           }
         }
