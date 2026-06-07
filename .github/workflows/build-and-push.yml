@@ -37,7 +37,7 @@ jobs:
         working-directory: client
 
       - name: Run client tests
-        run: npx ng test --no-watch
+        run: npx ng test --no-watch --runner-config vitest.config.ci.ts
         working-directory: client
 
   build-and-push:
