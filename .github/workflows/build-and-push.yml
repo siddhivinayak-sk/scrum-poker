@@ -39,6 +39,8 @@ jobs:
       - name: Run client tests
         run: npx ng test --no-watch
         working-directory: client
+        env:
+          NODE_OPTIONS: '--require ./test-polyfills.cjs'
 
   build-and-push:
     name: Build & Push Docker Image
