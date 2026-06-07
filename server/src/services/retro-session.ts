@@ -7,6 +7,8 @@ import {
   RetroCard,
   RetroComment,
   RetroSessionState,
+  FeelingCategory,
+  DEFAULT_ALLOWED_FEELINGS,
 } from '../../../shared/types';
 import { getTemplateById } from './retro-templates';
 
@@ -25,11 +27,15 @@ export class RetroSession {
   private board: RetroBoard;
   private participants: Map<string, User> = new Map();
   private votesUsed: Map<string, number> = new Map(); // userId -> votes used
+  private feelings: Map<string, FeelingCategory | null> = new Map(); // userId -> selected feeling
 
   constructor(sessionId: string, ownerId: string, config: RetroConfiguration) {
     this.sessionId = sessionId;
     this.ownerId = ownerId;
-    this.config = { ...config };
+    this.config = {
+      ...config,
+      allowedFeelings: config.allowedFeelings ?? DEFAULT_ALLOWED_FEELINGS,
+    };
     const now = new Date().toISOString();
     this.createdAt = now;
     this.lastActivityAt = now;
@@ -73,6 +79,7 @@ export class RetroSession {
       ownerId: this.ownerId,
       createdAt: this.createdAt,
       votesRemaining: this.getVotesRemainingMap(),
+      feelings: this.getFeelingsMap(),
     };
   }
 
@@ -118,9 +125,11 @@ export class RetroSession {
 
   /**
    * Remove a participant from the session by userId.
+   * Also removes their feeling entry.
    */
   removeParticipant(userId: string): void {
     this.participants.delete(userId);
+    this.feelings.delete(userId);
     this.touch();
   }
 
@@ -135,6 +144,59 @@ export class RetroSession {
       }
     }
     return false;
+  }
+
+  // --- Feelings operations ---
+
+  /**
+   * Set or update a participant's feeling.
+   * Validates the category is in allowedFeelings (or null for deselect) and that the board is not completed.
+   */
+  setFeeling(userId: string, category: FeelingCategory | null): void {
+    if (this.board.isCompleted) {
+      throw new Error('Board is completed');
+    }
+    if (category !== null && !this.config.allowedFeelings.includes(category)) {
+      throw new Error('Invalid feeling category');
+    }
+    this.feelings.set(userId, category);
+    this.touch();
+  }
+
+  /**
+   * Get a participant's current feeling.
+   */
+  getFeeling(userId: string): FeelingCategory | null {
+    return this.feelings.get(userId) ?? null;
+  }
+
+  /**
+   * Get the full feelings map as a plain Record.
+   */
+  getFeelingsMap(): Record<string, FeelingCategory | null> {
+    const result: Record<string, FeelingCategory | null> = {};
+    for (const [userId, feeling] of this.feelings.entries()) {
+      result[userId] = feeling;
+    }
+    return result;
+  }
+
+  /**
+   * Clear all participants whose feeling matches the given category.
+   * Returns the userIds whose feelings were cleared.
+   */
+  clearFeelingForCategory(category: FeelingCategory): string[] {
+    const affectedUserIds: string[] = [];
+    for (const [userId, feeling] of this.feelings.entries()) {
+      if (feeling === category) {
+        this.feelings.set(userId, null);
+        affectedUserIds.push(userId);
+      }
+    }
+    if (affectedUserIds.length > 0) {
+      this.touch();
+    }
+    return affectedUserIds;
   }
 
   /**
@@ -414,15 +476,30 @@ export class RetroSession {
     this.touch();
   }
 
-  updateConfig(partial: Partial<RetroConfiguration>): RetroConfiguration {
+  updateConfig(partial: Partial<RetroConfiguration>): { config: RetroConfiguration; affectedUserIds: string[] } {
     // Keep board.votingEnabled in sync with disableVotingInitially whenever
     // the setting is explicitly included in the update.
     if ('disableVotingInitially' in partial) {
       this.board.votingEnabled = !partial.disableVotingInitially;
     }
+
+    // Detect removed feeling categories and clear affected participants
+    let affectedUserIds: string[] = [];
+    if ('allowedFeelings' in partial && partial.allowedFeelings) {
+      const previousAllowed = this.config.allowedFeelings;
+      const newAllowed = partial.allowedFeelings;
+      const removedCategories = previousAllowed.filter(
+        (cat) => !newAllowed.includes(cat)
+      );
+      for (const category of removedCategories) {
+        const cleared = this.clearFeelingForCategory(category);
+        affectedUserIds = affectedUserIds.concat(cleared);
+      }
+    }
+
     this.config = { ...this.config, ...partial };
     this.touch();
-    return this.config;
+    return { config: this.config, affectedUserIds };
   }
 
   // --- Merge operations ---

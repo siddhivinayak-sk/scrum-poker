@@ -62,6 +62,7 @@ const defaultRetroConfig: RetroConfiguration = {
   password: null,
   enableGifEmoji: true,
   columnLayout: 'vertical',
+  allowedFeelings: ['Happy', 'Sad', 'No_Feeling'],
 };
 
 // --- Test Users ---

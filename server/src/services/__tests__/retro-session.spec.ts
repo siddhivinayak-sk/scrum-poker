@@ -14,6 +14,7 @@ function makeConfig(overrides: Partial<RetroConfiguration> = {}): RetroConfigura
     password: null,
     enableGifEmoji: true,
     columnLayout: 'vertical',
+    allowedFeelings: ['Happy', 'Sad', 'No_Feeling'],
     ...overrides,
   };
 }
@@ -546,7 +547,7 @@ describe('RetroSession - Moderator Workflow', () => {
       hideVoteCount: false,
     });
 
-    const updatedConfig = session.updateConfig({ boardName: 'Updated', hideVoteCount: true });
+    const { config: updatedConfig } = session.updateConfig({ boardName: 'Updated', hideVoteCount: true });
 
     expect(updatedConfig.boardName).toBe('Updated');
     expect(updatedConfig.hideVoteCount).toBe(true);

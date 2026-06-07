@@ -68,6 +68,7 @@ A real-time collaborative tool for agile teams. Includes **Scrum Poker** for sto
 - **Password protection**: Require a password to join the board
 - **Enable GIF/emoji**: Allow emoji insertion on cards
 - **Column layout**: Switch between vertical (side-by-side) and horizontal (stacked) layouts
+- **Allowed feelings**: Choose which feeling emojis are available on the board (default: Happy, Sad, No Feeling)
 - **Live settings**: Moderator can change all settings at any time via the ⚙️ gear icon
 
 #### Card Management
@@ -105,6 +106,17 @@ A real-time collaborative tool for agile teams. Includes **Scrum Poker** for sto
 - **Export CSV**: Download all board data as CSV (columns, cards, votes, comments)
 - **Import CSV**: Upload a CSV to pre-populate the board
 - **Screenshot**: Capture the entire board as a PNG image (clipboard or download)
+
+#### Participant Feelings
+- **Feelings strip**: Golden-bordered bar on the right side of the toolbar with selectable emoji icons
+- **10 feeling categories**: Satisfaction, Frustration, Confidence, Confusion, Boredom, Happy, No Feeling, Glad, Sad, Mad
+- **Configurable**: Moderator chooses which feelings are available via board settings (default: Happy, Sad, No Feeling)
+- **Toggle selection**: Click an emoji to select your mood; click again to deselect
+- **Real-time sync**: Feeling selections broadcast instantly to all participants
+- **Moderator summary**: 📊 icon opens a popup showing all participants' feelings (moderator only)
+- **Screenshot**: Capture the feelings summary as a PNG from the popup
+- **Board completion lock**: Feelings are frozen when the board is marked complete
+- **Minimum-one rule**: At least one feeling category must remain enabled
 
 #### Collaboration
 - **Real-time sync**: All changes broadcast instantly to all participants via WebSocket
@@ -180,11 +192,13 @@ scrum-poker-app/
 │   │   │   ├── retro-create/    # Retrospective board creation form
 │   │   │   ├── retro-board/     # Retrospective board view (columns, cards, toolbar)
 │   │   │   ├── retro-login/     # Retro session join/login page
+│   │   │   ├── feelings-strip/  # Feelings emoji selector strip
+│   │   │   ├── feelings-summary-popup/ # Moderator feelings summary dialog
 │   │   │   ├── board/           # Poker board component
 │   │   │   ├── card-deck/       # Poker card deck
 │   │   │   └── ...             # Other poker components
 │   │   ├── guards/          # Route guards (auth, session-auth, retro-auth)
-│   │   └── services/        # WebSocket, RetroWebSocket, Auth, State, RetroState
+│   │   └── services/        # WebSocket, RetroWebSocket, Auth, State, RetroState, Feelings
 │   └── package.json
 ├── server/                  # Node.js backend
 │   ├── src/
@@ -529,6 +543,7 @@ The moderator controls the flow using the toolbar buttons:
 | `retro:voting:enable` | `{}` | Enable voting |
 | `retro:board:complete` | `{}` | Lock the board |
 | `retro:config:update` | `{ config }` | Update board settings |
+| `retro:feeling:select` | `{ category }` | Select/deselect a feeling (null to deselect) |
 | `role:change` | `{ role }` | Switch role |
 
 **Server → Client:**
@@ -553,6 +568,7 @@ The moderator controls the flow using the toolbar buttons:
 | `retro:voting:enabled` | `{}` | Voting now active |
 | `retro:board:completed` | `{}` | Board locked |
 | `retro:config:updated` | `{ config }` | Config changed |
+| `retro:feeling:updated` | `{ userId, category }` | Participant feeling changed (null = deselected) |
 | `retro:participant:joined` | `{ participants }` | Participant list updated |
 | `retro:participant:left` | `{ participants }` | Participant list updated |
 | `retro:error` | `{ message, code }` | Error notification |
@@ -650,4 +666,19 @@ The project uses a combination of:
 28. Merge operation correctness (combined text with separator, source removed)
 29. Cancel merge is a no-op (board state unchanged)
 30. Completed board prevents merge
+
+### Participant Feelings Correctness Properties
+1. allowedFeelings bounds enforcement (1 to 10 entries)
+2. Non-moderator configuration rejection
+3. Feelings strip displays exactly allowedFeelings in order
+4. Selected feeling is highlighted (exactly one or none)
+5. Valid feeling selection updates state and broadcasts
+6. Toggle deselection (clicking same feeling sets to null)
+7. Disallowed feeling rejection
+8. Board completion prevents feeling changes
+9. Removing a feeling from allowed clears affected participants
+10. Disconnect removes participant feeling
+11. New joiner receives full feelings map
+12. Summary icon visibility matches moderator status
+13. Popup displays participants in case-insensitive alphabetical order
 

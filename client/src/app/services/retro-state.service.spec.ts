@@ -57,6 +57,7 @@ describe('RetroStateService', () => {
         password: null,
         enableGifEmoji: true,
         columnLayout: 'vertical',
+        allowedFeelings: ['Happy', 'Sad', 'No_Feeling'],
       },
       board: {
         columns: [
@@ -75,6 +76,7 @@ describe('RetroStateService', () => {
       ownerId: 'user-1',
       createdAt: '2024-01-01T00:00:00Z',
       votesRemaining: { 'user-1': 6 },
+      feelings: {},
       ...overrides,
     };
   }

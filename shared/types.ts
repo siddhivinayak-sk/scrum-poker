@@ -164,6 +164,46 @@ export interface SessionInfo {
 // Column layout type
 export type ColumnLayout = 'vertical' | 'horizontal';
 
+// --- Retro Participant Feelings Types ---
+
+// Feeling categories available for selection
+export type FeelingCategory =
+  | 'Satisfaction'
+  | 'Frustration'
+  | 'Confidence'
+  | 'Confusion'
+  | 'Boredom'
+  | 'Happy'
+  | 'No_Feeling'
+  | 'Glad'
+  | 'Sad'
+  | 'Mad';
+
+export const ALL_FEELING_CATEGORIES: FeelingCategory[] = [
+  'Satisfaction', 'Frustration', 'Confidence', 'Confusion',
+  'Boredom', 'Happy', 'No_Feeling', 'Glad', 'Sad', 'Mad',
+];
+
+// Emoji mapping for each feeling category
+export const FEELING_EMOJI_MAP: Record<FeelingCategory, string> = {
+  Satisfaction: '😌',
+  Frustration: '😤',
+  Confidence: '💪',
+  Confusion: '😕',
+  Boredom: '😴',
+  Happy: '😊',
+  No_Feeling: '😶',
+  Glad: '😄',
+  Sad: '😢',
+  Mad: '😠',
+};
+
+export const DEFAULT_ALLOWED_FEELINGS: FeelingCategory[] = ['Happy', 'Sad', 'No_Feeling'];
+
+// WebSocket event type constants for feelings
+export const RETRO_FEELING_SELECT = 'retro:feeling:select';
+export const RETRO_FEELING_UPDATED = 'retro:feeling:updated';
+
 // Retrospective board configuration
 export interface RetroConfiguration {
   boardName: string;
@@ -177,6 +217,7 @@ export interface RetroConfiguration {
   password: string | null;                // null = no password
   enableGifEmoji: boolean;               // default: true
   columnLayout: ColumnLayout;             // default: 'vertical'
+  allowedFeelings: FeelingCategory[];     // ordered list of allowed feelings, min 1, max 10
 }
 
 // Retrospective template definition
@@ -235,6 +276,7 @@ export interface RetroSessionState {
   ownerId: string;
   createdAt: string;
   votesRemaining: Record<string, number>; // userId -> remaining votes
+  feelings: Record<string, FeelingCategory | null>; // userId -> selected feeling or null
 }
 
 // --- Helper Functions ---

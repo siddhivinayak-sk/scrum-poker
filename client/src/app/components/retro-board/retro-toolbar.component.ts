@@ -1,10 +1,12 @@
-import { Component, input, inject, output, signal } from '@angular/core';
+import { Component, input, inject, output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RetroWebSocketService } from '../../services/retro-websocket.service';
 import { RetroStateService } from '../../services/retro-state.service';
 import { RetroExportService } from '../../services/retro-export.service';
 import { RetroScreenshotService } from '../../services/retro-screenshot.service';
 import { ToastService } from '../../services/toast.service';
+import { ALL_FEELING_CATEGORIES, FEELING_EMOJI_MAP, FeelingCategory } from '@shared/types';
+import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.component';
 
 /**
  * Toolbar component for the retrospective board.
@@ -17,7 +19,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-retro-toolbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FeelingsStripComponent],
   template: `
     <div class="retro-toolbar" role="toolbar" aria-label="Board actions">
       <!-- Moderator-only buttons -->
@@ -89,6 +91,12 @@ import { ToastService } from '../../services/toast.service';
         >⚙️</button>
       }
 
+      <!-- Spacer pushes feelings strip to the right -->
+      <div class="retro-toolbar__spacer"></div>
+
+      <!-- Feelings strip - renders regardless of retro template -->
+      <app-feelings-strip />
+
       <!-- Hidden file input for CSV import -->
       <input
         #fileInput
@@ -157,6 +165,23 @@ import { ToastService } from '../../services/toast.service';
               <label><input type="radio" name="layout" value="vertical" [checked]="currentConfig()?.columnLayout === 'vertical'" (change)="onLayoutChange('vertical')" /> Vertical</label>
               <label><input type="radio" name="layout" value="horizontal" [checked]="currentConfig()?.columnLayout === 'horizontal'" (change)="onLayoutChange('horizontal')" /> Horizontal</label>
             </div>
+
+            <!-- Feelings Configuration -->
+            <div class="retro-settings__section-label">Feelings</div>
+            <div class="retro-settings__feelings">
+              @for (category of allFeelingCategories; track category) {
+                <label class="retro-settings__toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="isFeelingAllowed(category)"
+                    [disabled]="isFeelingDisabled(category)"
+                    (change)="onFeelingToggle(category, $event)"
+                    [attr.aria-label]="getFeelingEmoji(category) + ' ' + category"
+                  />
+                  <span>{{ getFeelingEmoji(category) }} {{ category }}</span>
+                </label>
+              }
+            </div>
           </div>
           <div class="retro-dialog__actions">
             <button class="retro-dialog__btn retro-dialog__btn--ok" (click)="showSettingsDialog.set(false)">Close</button>
@@ -218,6 +243,10 @@ import { ToastService } from '../../services/toast.service';
 
     .retro-toolbar__file-input {
       display: none;
+    }
+
+    .retro-toolbar__spacer {
+      flex: 1;
     }
 
     /* Dialog styles */
@@ -342,6 +371,21 @@ import { ToastService } from '../../services/toast.service';
     .retro-settings__layout input[type="radio"] {
       accent-color: #667eea;
       cursor: pointer;
+    }
+
+    .retro-settings__section-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin-top: 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .retro-settings__feelings {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -477,5 +521,51 @@ export class RetroToolbarComponent {
 
   onLayoutChange(layout: 'vertical' | 'horizontal'): void {
     this.ws.sendConfigUpdate({ columnLayout: layout });
+  }
+
+  // --- Feelings settings ---
+
+  /** All feeling categories for the settings checkboxes */
+  readonly allFeelingCategories = ALL_FEELING_CATEGORIES;
+
+  /** Computed allowed feelings from current config */
+  readonly allowedFeelings = computed<FeelingCategory[]>(() => {
+    return this.currentConfig()?.allowedFeelings ?? [];
+  });
+
+  /** Check if a feeling category is currently allowed */
+  isFeelingAllowed(category: FeelingCategory): boolean {
+    return this.allowedFeelings().includes(category);
+  }
+
+  /** Disable the last remaining checked checkbox to enforce minimum-one constraint */
+  isFeelingDisabled(category: FeelingCategory): boolean {
+    const allowed = this.allowedFeelings();
+    return allowed.length === 1 && allowed.includes(category);
+  }
+
+  /** Get emoji for a feeling category */
+  getFeelingEmoji(category: FeelingCategory): string {
+    return FEELING_EMOJI_MAP[category];
+  }
+
+  /** Handle toggling a feeling category checkbox */
+  onFeelingToggle(category: FeelingCategory, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const current = this.allowedFeelings();
+
+    let updated: FeelingCategory[];
+    if (checked) {
+      // Add category (maintain order from ALL_FEELING_CATEGORIES)
+      updated = ALL_FEELING_CATEGORIES.filter(
+        (c) => current.includes(c) || c === category
+      );
+    } else {
+      // Remove category (enforce minimum-one should prevent this from going to 0)
+      updated = current.filter((c) => c !== category);
+      if (updated.length === 0) return; // safety guard
+    }
+
+    this.ws.sendConfigUpdate({ allowedFeelings: updated });
   }
 }
