@@ -165,7 +165,9 @@ describe('FeelingsSummaryPopupComponent', () => {
       mockCanvas.toBlob = vi.fn((cb) => cb(new Blob(['image-data'], { type: 'image/png' })));
       html2canvasMock.mockResolvedValue(mockCanvas);
 
-      // Mock URL.createObjectURL and revokeObjectURL
+      // Mock URL.createObjectURL and revokeObjectURL (save originals)
+      const originalCreateObjectURL = globalThis.URL.createObjectURL;
+      const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
       const createObjectURLMock = vi.fn().mockReturnValue('blob:mock-url');
       const revokeObjectURLMock = vi.fn();
       globalThis.URL.createObjectURL = createObjectURLMock;
@@ -183,6 +185,10 @@ describe('FeelingsSummaryPopupComponent', () => {
       await fixture.whenStable();
 
       expect(html2canvasMock).toHaveBeenCalled();
+
+      // Restore originals
+      globalThis.URL.createObjectURL = originalCreateObjectURL;
+      globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
     });
   });
 
@@ -212,6 +218,8 @@ describe('FeelingsSummaryPopupComponent', () => {
       expect(disabledBtn.textContent).toContain('Capturing');
 
       // Resolve the capture with a canvas that has synchronous toBlob
+      const originalCreateObjectURL = globalThis.URL.createObjectURL;
+      const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
       const mockCanvas = document.createElement('canvas');
       mockCanvas.toBlob = vi.fn((cb) => cb(new Blob(['data'], { type: 'image/png' })));
       globalThis.URL.createObjectURL = vi.fn().mockReturnValue('blob:url');
@@ -226,6 +234,10 @@ describe('FeelingsSummaryPopupComponent', () => {
       expect(component.capturing()).toBe(false);
       const enabledBtn = fixture.nativeElement.querySelector('.feelings-summary__screenshot-btn');
       expect(enabledBtn.disabled).toBe(false);
+
+      // Restore originals
+      globalThis.URL.createObjectURL = originalCreateObjectURL;
+      globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
     });
   });
 
