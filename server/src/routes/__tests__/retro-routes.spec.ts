@@ -30,6 +30,7 @@ function validConfig(overrides: Partial<RetroConfiguration> = {}): RetroConfigur
     password: null,
     enableGifEmoji: true,
     columnLayout: 'vertical',
+    allowedFeelings: ['Happy', 'Sad', 'No_Feeling'],
     ...overrides,
   };
 }

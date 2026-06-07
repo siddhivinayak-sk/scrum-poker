@@ -1,7 +1,14 @@
 import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
 import { URL } from 'url';
-import { User, WebSocketMessage } from '../../../shared/types';
+import {
+  User,
+  WebSocketMessage,
+  FeelingCategory,
+  ALL_FEELING_CATEGORIES,
+  RETRO_FEELING_SELECT,
+  RETRO_FEELING_UPDATED,
+} from '../../../shared/types';
 import { validateToken } from '../services/auth-service';
 import { retroSessionRegistry } from '../services/retro-session-registry';
 import { RetroSession } from '../services/retro-session';
@@ -180,6 +187,9 @@ function handleRetroEvent(ws: WebSocket, user: User, sessionId: string, event: s
         break;
       case 'retro:config:update':
         handleConfigUpdate(ws, user, sessionId, session, data);
+        break;
+      case RETRO_FEELING_SELECT:
+        handleFeelingSelect(ws, user, sessionId, session, data);
         break;
       case 'role:change':
         handleRoleChange(ws, user, sessionId, session, data);
@@ -437,10 +447,44 @@ function handleConfigUpdate(ws: WebSocket, user: User, sessionId: string, sessio
     return;
   }
 
-  const updatedConfig = session.updateConfig(config);
+  const { config: updatedConfig, affectedUserIds } = session.updateConfig(config);
   // Include current votingEnabled so clients can update board state immediately
   const votingEnabled = session.getSessionState().board.votingEnabled;
   broadcastToSession(sessionId, 'retro:config:updated', { config: updatedConfig, votingEnabled });
+
+  // Broadcast individual feeling cleared events for participants whose feelings were removed
+  if (affectedUserIds && affectedUserIds.length > 0) {
+    for (const affectedUserId of affectedUserIds) {
+      broadcastToSession(sessionId, RETRO_FEELING_UPDATED, { userId: affectedUserId, category: null });
+    }
+  }
+}
+
+function handleFeelingSelect(ws: WebSocket, user: User, sessionId: string, session: RetroSession, data: any): void {
+  const { category } = data || {};
+
+  // Validate the category value: must be null or a valid FeelingCategory string
+  if (category !== null && category !== undefined) {
+    if (typeof category !== 'string' || !ALL_FEELING_CATEGORIES.includes(category as FeelingCategory)) {
+      sendError(ws, 'Invalid feeling category', 'INVALID_FEELING');
+      return;
+    }
+  }
+
+  const feelingCategory: FeelingCategory | null = category === undefined ? null : category as FeelingCategory | null;
+
+  try {
+    session.setFeeling(user.id, feelingCategory);
+    broadcastToSession(sessionId, RETRO_FEELING_UPDATED, { userId: user.id, category: feelingCategory });
+  } catch (err: any) {
+    if (err.message.includes('completed')) {
+      sendError(ws, err.message, 'BOARD_COMPLETED');
+    } else if (err.message.includes('Invalid feeling')) {
+      sendError(ws, err.message, 'INVALID_FEELING');
+    } else {
+      sendError(ws, err.message, 'ERROR');
+    }
+  }
 }
 
 function handleRoleChange(ws: WebSocket, user: User, sessionId: string, session: RetroSession, data: any): void {
@@ -570,6 +614,8 @@ export function handleRetroWebSocket(ws: WebSocket, request: IncomingMessage): v
           if (retroSession) {
             retroSession.removeParticipant(participant.id);
             broadcastToSession(sid, 'retro:participant:left', { participants: retroSession.getParticipants() });
+            // Broadcast feeling cleared for disconnected user
+            broadcastToSession(sid, RETRO_FEELING_UPDATED, { userId: participant.id, category: null });
           }
 
           // Clean up empty session client map

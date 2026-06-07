@@ -13,7 +13,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { BasePathService } from '../../services/base-path.service';
-import { RetroConfiguration, RetroTemplate } from '@shared/types';
+import { RetroConfiguration, RetroTemplate, DEFAULT_ALLOWED_FEELINGS } from '@shared/types';
 import { RETRO_TEMPLATES } from '@shared/retro-templates';
 
 /**
@@ -680,6 +680,7 @@ export class RetroCreatePageComponent implements OnInit {
       password: formValue.secureWithPassword ? (formValue.password || null) : null,
       enableGifEmoji: formValue.enableGifEmoji ?? true,
       columnLayout: formValue.columnLayout ?? 'vertical',
+      allowedFeelings: DEFAULT_ALLOWED_FEELINGS,
     };
 
     const token = this.authService.getToken();

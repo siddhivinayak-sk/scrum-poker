@@ -19,6 +19,7 @@ function makeConfig(): RetroConfiguration {
     password: null,
     enableGifEmoji: true,
     columnLayout: 'vertical',
+    allowedFeelings: ['Happy', 'Sad', 'No_Feeling'],
   };
 }
 
@@ -36,6 +37,14 @@ function arbRetroConfig(): fc.Arbitrary<RetroConfiguration> {
 
   const arbColumnLayout = fc.constantFrom('vertical' as const, 'horizontal' as const);
 
+  const arbFeelingCategory = fc.constantFrom(
+    'Satisfaction' as const, 'Frustration' as const, 'Confidence' as const,
+    'Confusion' as const, 'Boredom' as const, 'Happy' as const,
+    'No_Feeling' as const, 'Glad' as const, 'Sad' as const, 'Mad' as const,
+  );
+
+  const arbAllowedFeelings = fc.uniqueArray(arbFeelingCategory, { minLength: 1, maxLength: 10 });
+
   return fc.record({
     boardName: fc.string({ minLength: 1, maxLength: 50 }),
     maxVotesPerUser: fc.integer({ min: 1, max: 20 }),
@@ -48,6 +57,7 @@ function arbRetroConfig(): fc.Arbitrary<RetroConfiguration> {
     password: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 30 })),
     enableGifEmoji: fc.boolean(),
     columnLayout: arbColumnLayout,
+    allowedFeelings: arbAllowedFeelings,
   });
 }
 
