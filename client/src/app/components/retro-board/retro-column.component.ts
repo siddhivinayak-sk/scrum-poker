@@ -5,6 +5,7 @@ import { RetroWebSocketService } from '../../services/retro-websocket.service';
 import { RetroStateService } from '../../services/retro-state.service';
 import { RetroCardComponent } from './retro-card.component';
 import { MergePopupComponent } from './merge-popup.component';
+import { CardRect, computeDropIndex, adjustDropIndexForSameColumn } from './drop-index';
 
 @Component({
   selector: 'app-retro-column',
@@ -27,7 +28,11 @@ import { MergePopupComponent } from './merge-popup.component';
         (dragstart)="onColumnDragStart($event)"
         (dragend)="onColumnDragEnd($event)"
       >
-        <h3 class="retro-column__name">{{ column().name }}</h3>
+        <h3
+          class="retro-column__name"
+          [title]="column().name"
+          [attr.aria-label]="column().name"
+        >{{ column().name }}</h3>
         <div class="retro-column__actions">
           <span class="retro-column__card-count" [attr.aria-label]="column().cards.length + ' cards'">
             {{ column().cards.length }}
@@ -98,6 +103,11 @@ import { MergePopupComponent } from './merge-popup.component';
       min-width: 300px;
       width: 300px;
       flex: 0 0 300px;
+      /* Fills the board height so an empty column reads as a full drop target,
+         and a populated one scrolls its own cards instead of overflowing the
+         board (R7.16) */
+      align-self: stretch;
+      min-height: 0;
     }
 
     /* Horizontal layout: each aspect spans full width, cards flow left-to-right */
@@ -105,22 +115,31 @@ import { MergePopupComponent } from './merge-popup.component';
       width: 100%;
       min-width: unset;
       flex: 0 0 auto;
+      /* Stacked layout: the container scrolls, so a column sizes to its cards */
+      align-self: flex-start;
     }
 
     .retro-column {
       display: flex;
       flex-direction: column;
+      /* Fills the stretched host; the card list is the only part that scrolls */
       height: 100%;
-      background: #f8f9fa;
-      border: 2px solid #e0e0e0;
+      min-height: 0;
+      background: var(--surface-board);
+      border: 2px solid var(--color-primary-light);
       border-radius: 6px;
       overflow: hidden;
       transition: border-color 0.15s ease;
     }
 
+    /* Stacked layout keeps content sizing */
+    :host.is-horizontal .retro-column {
+      height: auto;
+    }
+
     .retro-column.drag-over {
-      border-color: #667eea;
-      background: #f0f4ff;
+      border-color: var(--color-primary);
+      background: var(--surface-column-drag-over);
     }
 
     /* Header */
@@ -128,9 +147,11 @@ import { MergePopupComponent } from './merge-popup.component';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.375rem 0.5rem;
-      background: #fff;
-      border-bottom: 1px solid #e8e8e8;
+      /* Name, count, add and delete stay on one row (R7.6) */
+      flex-wrap: nowrap;
+      padding: 4px 8px;
+      background: var(--surface-card-deck);
+      border-bottom: 1px solid var(--color-primary-light);
       cursor: grab;
       flex-shrink: 0;
     }
@@ -143,41 +164,46 @@ import { MergePopupComponent } from './merge-popup.component';
       margin: 0;
       font-size: 0.75rem;
       font-weight: 600;
-      color: #333;
+      color: var(--text-primary);
+      /* Single line with an ellipsis; the full name lives on title/aria-label (R7.7) */
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      flex: 1;
+      flex: 1 1 auto;
       min-width: 0;
     }
 
     .retro-column__actions {
       display: flex;
       align-items: center;
-      gap: 0.375rem;
+      flex-wrap: nowrap;
+      gap: 4px;
       flex-shrink: 0;
     }
 
     .retro-column__card-count {
-      font-size: 0.65rem;
-      color: #888;
-      background: #eee;
-      padding: 0.1rem 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-primary);
+      background: var(--color-primary-light);
+      padding: 4px 8px;
       border-radius: 8px;
       font-weight: 500;
+      white-space: nowrap;
     }
 
     .retro-column__add-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 32px;
+      height: 32px;
       min-width: 32px;
       min-height: 32px;
       border: none;
-      background: #667eea;
-      color: #fff;
+      /* --color-primary-dark, not --color-primary: white on #667eea is 3.66:1,
+         below the 4.5:1 the glyph needs; on #5a67d8 it is 4.81:1 (R7.4) */
+      background: var(--color-primary-dark);
+      color: var(--text-on-primary);
       border-radius: 4px;
       font-size: 1rem;
       font-weight: 700;
@@ -186,11 +212,12 @@ import { MergePopupComponent } from './merge-popup.component';
     }
 
     .retro-column__add-btn:hover:not(:disabled) {
-      background: #5a6fd6;
+      background: var(--primary-ink-hover);
     }
 
     .retro-column__add-btn:disabled {
-      background: #ccc;
+      background: var(--color-primary-light);
+      color: var(--text-primary);
       cursor: not-allowed;
     }
 
@@ -198,21 +225,22 @@ import { MergePopupComponent } from './merge-popup.component';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
-      min-width: 28px;
-      min-height: 28px;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
       border: none;
-      background: transparent;
-      color: #999;
+      background: var(--surface-card-deck);
+      color: var(--text-secondary);
       border-radius: 4px;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       cursor: pointer;
     }
 
     .retro-column__delete-btn:hover:not(:disabled) {
-      color: #d32f2f;
-      background: rgba(211, 47, 47, 0.08);
+      /* Darkened destructive red so the icon keeps 4.5:1 on the header surface */
+      color: var(--error-ink-hover);
+      background: var(--wash-error-on-card);
     }
 
     .retro-column__delete-btn:disabled {
@@ -222,17 +250,21 @@ import { MergePopupComponent } from './merge-popup.component';
 
     /* Cards area */
     .retro-column__cards {
-      flex: 1;
+      /* Takes the leftover height under the pinned header and scrolls its own
+         overflow, so every card stays reachable (R7.16) */
+      flex: 1 1 auto;
       overflow-y: auto;
-      padding: 0.375rem;
+      padding: 8px;
       display: flex;
       flex-direction: column;
-      gap: 0.375rem;
-      min-height: 60px;
+      gap: 8px;
+      min-height: 0;
     }
 
     /* Horizontal mode: cards flow left-to-right */
     :host.is-horizontal .retro-column__cards {
+      /* Content-sized in the stacked layout, so no grow factor */
+      flex: 0 0 auto;
       flex-direction: row;
       flex-wrap: nowrap;
       overflow-x: auto;
@@ -253,35 +285,35 @@ import { MergePopupComponent } from './merge-popup.component';
     }
 
     .retro-column__cards::-webkit-scrollbar-track {
-      background: #e8e8e8;
+      background: var(--color-primary-light);
       border-radius: 3px;
     }
 
     .retro-column__cards::-webkit-scrollbar-thumb {
-      background: #999;
+      background: var(--text-secondary);
       border-radius: 3px;
     }
 
     .retro-column__cards::-webkit-scrollbar-thumb:hover {
-      background: #666;
+      background: var(--text-primary);
     }
 
     .retro-column__hidden-count {
       text-align: center;
-      font-size: 0.7rem;
-      color: #888;
-      padding: 0.5rem;
-      background: #f0f0f0;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      padding: 8px;
+      background: var(--surface-board);
       border-radius: 4px;
-      border: 1px dashed #ddd;
+      border: 1px dashed var(--color-primary-light);
     }
 
     /* Drop indicator injected via DOM — vertical layout (default) */
     :host ::ng-deep .retro-drop-indicator {
       height: 3px;
-      background: #667eea;
+      background: var(--color-primary);
       border-radius: 2px;
-      margin: 2px 0;
+      margin: 4px 0;
       transition: none;
       flex-shrink: 0;
     }
@@ -292,14 +324,14 @@ import { MergePopupComponent } from './merge-popup.component';
       height: auto;
       align-self: stretch;
       min-height: 80px;
-      margin: 0 2px;
+      margin: 0 4px;
     }
 
     /* Delete confirmation dialog */
     .retro-column__dialog-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
+      background: var(--scrim-dialog);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -307,52 +339,53 @@ import { MergePopupComponent } from './merge-popup.component';
     }
 
     .retro-column__dialog {
-      background: #fff;
+      background: var(--surface-card-deck);
       border-radius: 10px;
-      padding: 1.25rem;
+      padding: 20px;
       min-width: 280px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-lg);
     }
 
     .retro-column__dialog-text {
-      margin: 0 0 1rem;
+      margin: 0 0 16px;
       font-size: 0.9rem;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .retro-column__dialog-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 0.5rem;
+      gap: 8px;
     }
 
     .retro-column__dialog-btn {
-      padding: 0.4rem 1rem;
+      padding: 8px 16px;
       border-radius: 6px;
       font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;
+      min-width: 64px;
       min-height: 36px;
     }
 
     .retro-column__dialog-btn--cancel {
-      border: 1px solid #d0d5dd;
-      background: #fff;
-      color: #555;
+      border: 1px solid var(--color-primary-light);
+      background: var(--surface-card-deck);
+      color: var(--text-secondary);
     }
 
     .retro-column__dialog-btn--cancel:hover {
-      background: #f5f5f5;
+      background: var(--surface-board);
     }
 
     .retro-column__dialog-btn--delete {
       border: none;
-      background: #d32f2f;
-      color: #fff;
+      background: var(--error-ink-hover);
+      color: var(--text-on-primary);
     }
 
     .retro-column__dialog-btn--delete:hover {
-      background: #b71c1c;
+      background: var(--error-ink-active);
     }
   `],
 })
@@ -523,12 +556,9 @@ export class RetroColumnComponent {
         }
       } else {
         // Card-on-column drop — move the card as before
-        let dropIdx = this.getDropIndex(event);
         const cards = this.column().cards;
         const originalIndex = cards.findIndex((c) => c.id === cardId);
-        if (originalIndex !== -1 && originalIndex < dropIdx) {
-          dropIdx -= 1;
-        }
+        const dropIdx = adjustDropIndexForSameColumn(this.getDropIndex(event), originalIndex);
         this.ws.sendCardMove(cardId, this.column().id, dropIdx);
       }
     }
@@ -543,20 +573,12 @@ export class RetroColumnComponent {
     if (!container) return;
 
     const isHorizontal = this.isHorizontalLayout();
-    const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
-    let insertBeforeEl: Element | null = null;
-
-    for (const cardEl of cardElements) {
-      const rect = cardEl.getBoundingClientRect();
-      const mid = isHorizontal
-        ? rect.left + rect.width / 2
-        : rect.top + rect.height / 2;
-      const pos = isHorizontal ? event.clientX : event.clientY;
-      if (pos < mid) {
-        insertBeforeEl = cardEl;
-        break;
-      }
-    }
+    const cardElements = this.renderedCardElements(container);
+    const dropIndex = computeDropIndex(
+      this.measureCardRects(cardElements, isHorizontal),
+      this.pointerPosition(event, isHorizontal)
+    );
+    const insertBeforeEl: Element | null = cardElements[dropIndex] ?? null;
 
     // Create or reuse the indicator
     if (!this.dropIndicator) {
@@ -583,20 +605,40 @@ export class RetroColumnComponent {
     if (!container) return 0;
 
     const isHorizontal = this.isHorizontalLayout();
-    const cardElements = Array.from(container.querySelectorAll(':scope > app-retro-card'));
+    const cardElements = this.renderedCardElements(container);
 
-    for (let i = 0; i < cardElements.length; i++) {
-      const rect = cardElements[i].getBoundingClientRect();
-      const mid = isHorizontal
-        ? rect.left + rect.width / 2
-        : rect.top + rect.height / 2;
-      const pos = isHorizontal ? event.clientX : event.clientY;
-      if (pos < mid) {
-        return i;
-      }
-    }
+    return computeDropIndex(
+      this.measureCardRects(cardElements, isHorizontal),
+      this.pointerPosition(event, isHorizontal)
+    );
+  }
 
-    return cardElements.length;
+  /**
+   * The column's own rendered card elements, in document order. Direct children
+   * only, so the drop indicator and the hidden-card notice are never measured.
+   */
+  private renderedCardElements(container: HTMLElement): Element[] {
+    return Array.from(container.children).filter(
+      (child) => child.tagName.toLowerCase() === 'app-retro-card'
+    );
+  }
+
+  /**
+   * Each card's measured extent along the active layout axis, read at drag
+   * time: left/width for horizontal columns, top/height for vertical ones.
+   */
+  private measureCardRects(cardElements: readonly Element[], isHorizontal: boolean): CardRect[] {
+    return cardElements.map((cardEl) => {
+      const rect = cardEl.getBoundingClientRect();
+      return isHorizontal
+        ? { start: rect.left, size: rect.width }
+        : { start: rect.top, size: rect.height };
+    });
+  }
+
+  /** Pointer position along the active layout axis. */
+  private pointerPosition(event: DragEvent, isHorizontal: boolean): number {
+    return isHorizontal ? event.clientX : event.clientY;
   }
 
   // --- Card-on-card drop detection ---

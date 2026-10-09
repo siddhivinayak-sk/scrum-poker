@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { validateToken } from '../services/auth-service';
 import { retroSessionRegistry } from '../services/retro-session-registry';
-import { RetroConfiguration } from '../../../shared/types';
+import { RetroSession } from '../services/retro-session';
+import { endRetroSession } from '../websocket/retro-handler';
+import {
+  RetroConfiguration,
+  RetroSessionSummary,
+  RetroSessionsResponse,
+} from '../../../shared/types';
 
 export const retroRouter = Router();
 
@@ -48,6 +54,41 @@ function validateConfig(config: any): string | null {
 }
 
 /**
+ * Compare two summaries by `lastActivityAt` descending, ties broken by
+ * `createdAt` descending. Both fields are ISO 8601 UTC strings, so a plain
+ * lexicographic comparison is chronological (R8.4).
+ */
+function compareRetroSummaries(a: RetroSessionSummary, b: RetroSessionSummary): number {
+  if (a.lastActivityAt !== b.lastActivityAt) {
+    return a.lastActivityAt < b.lastActivityAt ? 1 : -1;
+  }
+  if (a.createdAt !== b.createdAt) {
+    return a.createdAt < b.createdAt ? 1 : -1;
+  }
+  return 0;
+}
+
+/**
+ * Map retro sessions to `RetroSessionSummary` entries, most recently active
+ * first. Purely reads the given sessions — no session is mutated and the input
+ * array is left untouched (R8.8). Only retro modules are involved, so a
+ * poker `GameSession` can never appear here (R8.7, R13.9).
+ */
+export function summariseRetroSessions(sessions: RetroSession[]): RetroSessionSummary[] {
+  return sessions
+    .map((session) => ({
+      sessionId: session.sessionId,
+      boardName: session.config.boardName,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+      participantCount: session.getParticipantCount(),
+      cardCount: session.getCardCount(),
+      isCompleted: session.isBoardCompleted(),
+    }))
+    .sort(compareRetroSummaries);
+}
+
+/**
  * POST /sessions
  * Create a new retro session.
  * Body: { config: RetroConfiguration }
@@ -75,6 +116,34 @@ retroRouter.post('/sessions', (req: Request, res: Response) => {
     sessionId: sessionInfo.sessionId,
     config: sessionInfo.config,
   });
+});
+
+/**
+ * GET /sessions/mine
+ * List every retro session owned by the authenticated user.
+ * Returns: { sessions: RetroSessionSummary[] } with status 200
+ *
+ * NOTE: This route is registered before GET /sessions/:sessionId so that
+ * `mine` is never captured as a session id (R8.1).
+ *
+ * A missing, unverifiable or expired token yields 401 UNAUTHORIZED (R8.5).
+ * The handler only reads the retro registry, so two consecutive calls return
+ * the same entries and no session state changes (R8.8). It touches retro
+ * modules only, so a poker session can never appear (R8.7, R13.9).
+ *
+ * Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.7, 8.8, 13.5, 13.9
+ */
+retroRouter.get('/sessions/mine', (req: Request, res: Response) => {
+  const user = authenticateRequest(req);
+  if (!user) {
+    res.status(401).json({ error: 'UNAUTHORIZED' });
+    return;
+  }
+
+  const sessions = summariseRetroSessions(retroSessionRegistry.getSessionsByOwner(user.id));
+
+  const body: RetroSessionsResponse = { sessions };
+  res.status(200).json(body);
 });
 
 /**
@@ -204,6 +273,57 @@ retroRouter.post('/sessions/:sessionId/import', (req: Request, res: Response) =>
   } catch (error: any) {
     res.status(400).json({ error: 'INVALID_CSV', message: error.message });
   }
+});
+
+/**
+ * DELETE /sessions/:sessionId
+ * End a retro session. Moderator (owner) only.
+ * Returns: { success: true } with status 200
+ *
+ * Checks run in a fixed order so a caller can never learn anything about a
+ * session it may not touch:
+ *   1. 401 UNAUTHORIZED for a missing, unverifiable or expired token — nothing
+ *      is removed and no session changes, regardless of whether the registry
+ *      holds the requested id (R9.9).
+ *   2. 404 SESSION_NOT_FOUND when the registry does not hold the id; every
+ *      other session is left as it was (R9.11).
+ *   3. 403 FORBIDDEN when the authenticated user is not the owner; the
+ *      session, its cards and its votes stay unchanged (R9.10).
+ *   4. Otherwise the session is removed from the registry and
+ *      `endRetroSession` broadcasts `retro:session:ended` to every connected
+ *      participant — the moderator included — before closing their sockets
+ *      (R9.7, R9.8).
+ *
+ * Only retro modules are imported here, so no poker `GameSession` is reachable
+ * from this handler (R9.15, R13.9).
+ *
+ * Requirements: 9.7, 9.8, 9.9, 9.10, 9.11, 9.15, 13.5, 13.9
+ */
+retroRouter.delete('/sessions/:sessionId', (req: Request, res: Response) => {
+  const user = authenticateRequest(req);
+  if (!user) {
+    res.status(401).json({ error: 'UNAUTHORIZED' });
+    return;
+  }
+
+  const sessionId = req.params.sessionId as string;
+  const session = retroSessionRegistry.getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({ error: 'SESSION_NOT_FOUND' });
+    return;
+  }
+
+  // Only the session owner (moderator) can end the session
+  if (session.ownerId !== user.id) {
+    res.status(403).json({ error: 'FORBIDDEN', message: 'Only the moderator can end the session' });
+    return;
+  }
+
+  retroSessionRegistry.removeSession(sessionId);
+  endRetroSession(sessionId);
+
+  res.status(200).json({ success: true });
 });
 
 /**

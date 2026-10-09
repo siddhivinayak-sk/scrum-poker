@@ -9,6 +9,7 @@ import {
   RetroSessionState,
   FeelingCategory,
   DEFAULT_ALLOWED_FEELINGS,
+  resolveFluidCardHeight,
 } from '../../../shared/types';
 import { getTemplateById } from './retro-templates';
 
@@ -35,6 +36,9 @@ export class RetroSession {
     this.config = {
       ...config,
       allowedFeelings: config.allowedFeelings ?? DEFAULT_ALLOWED_FEELINGS,
+      // Normalise once at creation so the stored config — and therefore every
+      // getSessionState() broadcast — always carries a boolean (R6.2, R13.10).
+      fluidCardHeight: resolveFluidCardHeight(config.fluidCardHeight),
     };
     const now = new Date().toISOString();
     this.createdAt = now;
@@ -476,18 +480,48 @@ export class RetroSession {
     this.touch();
   }
 
-  updateConfig(partial: Partial<RetroConfiguration>): { config: RetroConfiguration; affectedUserIds: string[] } {
+  /**
+   * Merge a partial configuration into the session config.
+   *
+   * Invalid entries are stripped from the partial *before* the merge and
+   * reported back through `rejectedKeys`, which lists the configuration keys
+   * that were discarded. The caller decides how to surface the rejection: the
+   * retro WebSocket handler replies `retro:error` with code `INVALID_CONFIG`
+   * and sends no broadcast when `rejectedKeys` is non-empty (R6.17).
+   *
+   * Currently the only validated key is `fluidCardHeight`, which must be a
+   * boolean. A rejected key leaves the stored value untouched; any remaining
+   * valid keys in the same partial still merge.
+   *
+   * @returns the full config after the merge, the userIds whose feeling was
+   *          cleared by a narrowed `allowedFeelings`, and the rejected keys.
+   */
+  updateConfig(partial: Partial<RetroConfiguration>): {
+    config: RetroConfiguration;
+    affectedUserIds: string[];
+    rejectedKeys: (keyof RetroConfiguration)[];
+  } {
+    // Work on a copy so the caller's object is never mutated.
+    const sanitized: Partial<RetroConfiguration> = { ...partial };
+    const rejectedKeys: (keyof RetroConfiguration)[] = [];
+
+    // fluidCardHeight must be a boolean; anything else is discarded.
+    if ('fluidCardHeight' in sanitized && typeof sanitized.fluidCardHeight !== 'boolean') {
+      delete sanitized.fluidCardHeight;
+      rejectedKeys.push('fluidCardHeight');
+    }
+
     // Keep board.votingEnabled in sync with disableVotingInitially whenever
     // the setting is explicitly included in the update.
-    if ('disableVotingInitially' in partial) {
-      this.board.votingEnabled = !partial.disableVotingInitially;
+    if ('disableVotingInitially' in sanitized) {
+      this.board.votingEnabled = !sanitized.disableVotingInitially;
     }
 
     // Detect removed feeling categories and clear affected participants
     let affectedUserIds: string[] = [];
-    if ('allowedFeelings' in partial && partial.allowedFeelings) {
+    if ('allowedFeelings' in sanitized && sanitized.allowedFeelings) {
       const previousAllowed = this.config.allowedFeelings;
-      const newAllowed = partial.allowedFeelings;
+      const newAllowed = sanitized.allowedFeelings;
       const removedCategories = previousAllowed.filter(
         (cat) => !newAllowed.includes(cat)
       );
@@ -497,9 +531,25 @@ export class RetroSession {
       }
     }
 
-    this.config = { ...this.config, ...partial };
+    this.config = { ...this.config, ...sanitized };
     this.touch();
-    return { config: this.config, affectedUserIds };
+    return { config: this.config, affectedUserIds, rejectedKeys };
+  }
+
+  // --- Board accessors (the board field is private) ---
+
+  /**
+   * Total number of cards across every column on the board (R8.6).
+   */
+  getCardCount(): number {
+    return this.board.columns.reduce((total, column) => total + column.cards.length, 0);
+  }
+
+  /**
+   * Whether the board has been marked completed by the moderator (R8.6).
+   */
+  isBoardCompleted(): boolean {
+    return this.board.isCompleted;
   }
 
   // --- Merge operations ---

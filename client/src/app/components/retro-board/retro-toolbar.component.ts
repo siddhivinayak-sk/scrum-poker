@@ -5,7 +5,12 @@ import { RetroStateService } from '../../services/retro-state.service';
 import { RetroExportService } from '../../services/retro-export.service';
 import { RetroScreenshotService } from '../../services/retro-screenshot.service';
 import { ToastService } from '../../services/toast.service';
-import { ALL_FEELING_CATEGORIES, FEELING_EMOJI_MAP, FeelingCategory } from '@shared/types';
+import {
+  ALL_FEELING_CATEGORIES,
+  FEELING_EMOJI_MAP,
+  FeelingCategory,
+  resolveFluidCardHeight,
+} from '@shared/types';
 import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.component';
 
 /**
@@ -71,6 +76,7 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
         class="retro-toolbar__btn"
         title="Screenshot"
         aria-label="Screenshot"
+        [disabled]="capturing()"
         (click)="onScreenshot()"
       >📸</button>
 
@@ -160,6 +166,14 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
               <input type="checkbox" [checked]="currentConfig()?.enableGifEmoji" (change)="onSettingChange('enableGifEmoji', $event)" />
               <span>Enable GIF/emoji</span>
             </label>
+            <!-- Moderator-only: only a moderator may change the card height rule, so
+                 nobody else is offered the control (R6.10, R6.15). -->
+            @if (isModerator()) {
+              <label class="retro-settings__toggle">
+                <input type="checkbox" [checked]="fluidCardHeightSetting()" (change)="onSettingChange('fluidCardHeight', $event)" />
+                <span>Fluid card height</span>
+              </label>
+            }
             <div class="retro-settings__layout">
               <span>Column layout:</span>
               <label><input type="radio" name="layout" value="vertical" [checked]="currentConfig()?.columnLayout === 'vertical'" (change)="onLayoutChange('vertical')" /> Vertical</label>
@@ -191,28 +205,54 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
     }
   `,
   styles: [`
+    :host {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    /* Single compact row. box-sizing keeps max-height the *outer* bounding box,
+       so padding and border are inside the 40px cap required by R10.1:
+       4px + 32px control + 4px = 40px. */
     .retro-toolbar {
       display: flex;
       flex-direction: row;
       align-items: center;
-      gap: 0.25rem;
-      padding: 0.25rem 0.5rem;
-      margin-bottom: 0.375rem;
-      background: #fff;
-      border: 1px solid #e0e0e0;
+      gap: 4px;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+      max-height: 40px;
+      background: var(--surface-card-deck);
+      border: 1px solid var(--color-primary-light);
       border-radius: 6px;
       flex-shrink: 0;
-      flex-wrap: wrap;
+      /* Controls stay on one row; surplus width scrolls inside the toolbar's own
+         box so the page keeps overflow-x: hidden (R10.8) */
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    /* Sub-768px: wrap to at most three 40px rows (R10.2) */
+    @media (max-width: 767px) {
+      .retro-toolbar {
+        max-height: 120px;
+        flex-wrap: wrap;
+        row-gap: 0;
+        overflow-x: hidden;
+      }
     }
 
     .retro-toolbar__btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      /* 32x32 minimum pointer target (R10.3) */
       min-width: 32px;
       min-height: 32px;
       width: 32px;
       height: 32px;
+      flex: 0 0 auto;
       padding: 0;
       border: none;
       border-radius: 4px;
@@ -224,11 +264,13 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
     }
 
     .retro-toolbar__btn:hover:not(:disabled) {
-      background: #f0f0f0;
+      /* No token for a neutral hover wash: mixed from the text token so it tints
+         whichever toolbar surface is underneath. */
+      background: var(--wash-neutral-weak);
     }
 
     .retro-toolbar__btn:active:not(:disabled) {
-      background: #e0e0e0;
+      background: var(--wash-neutral-strong);
     }
 
     .retro-toolbar__btn:disabled {
@@ -237,7 +279,7 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
     }
 
     .retro-toolbar__btn:focus-visible {
-      outline: 2px solid var(--color-primary, #667eea);
+      outline: 2px solid var(--color-primary-dark);
       outline-offset: 2px;
     }
 
@@ -249,11 +291,18 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
       flex: 1;
     }
 
+    /* The strip is a toolbar row item that never stretches, so no empty bordered
+       region can grow past the controls it holds (R10.10) */
+    .retro-toolbar app-feelings-strip {
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
     /* Dialog styles */
     .retro-dialog-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
+      background: var(--scrim-dialog);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -261,131 +310,162 @@ import { FeelingsStripComponent } from '../feelings-strip/feelings-strip.compone
     }
 
     .retro-dialog {
-      background: #fff;
+      background: var(--surface-card-deck);
       border-radius: 10px;
-      padding: 1.5rem;
+      padding: 24px;
       min-width: 300px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-lg);
     }
 
     .retro-dialog__title {
-      margin: 0 0 1rem;
+      margin: 0 0 16px;
       font-size: 1rem;
       font-weight: 600;
-      color: #1a1a2e;
+      color: var(--text-primary);
     }
 
     .retro-dialog__input {
       width: 100%;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #d0d5dd;
+      padding: 8px 12px;
+      border: 1px solid var(--color-primary-light);
       border-radius: 6px;
       font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--surface-board);
       outline: none;
       box-sizing: border-box;
+      min-height: 32px;
     }
 
     .retro-dialog__input:focus {
-      border-color: #667eea;
-      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--focus-ring-primary);
     }
 
     .retro-dialog__actions {
       display: flex;
       justify-content: flex-end;
-      gap: 0.5rem;
-      margin-top: 1rem;
+      gap: 8px;
+      margin-top: 16px;
     }
 
     .retro-dialog__btn {
-      padding: 0.4rem 1rem;
+      padding: 8px 16px;
       border-radius: 6px;
       font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;
+      min-width: 64px;
       min-height: 36px;
     }
 
     .retro-dialog__btn--cancel {
-      border: 1px solid #d0d5dd;
-      background: #fff;
-      color: #555;
+      border: 1px solid var(--color-primary-light);
+      background: var(--surface-card-deck);
+      color: var(--text-secondary);
     }
 
     .retro-dialog__btn--cancel:hover {
-      background: #f5f5f5;
+      background: var(--surface-board);
     }
 
     .retro-dialog__btn--ok {
       border: none;
-      background: #667eea;
-      color: #fff;
+      /* --color-primary-dark, not --color-primary: white on #667eea is 3.66:1,
+         below the 4.5:1 the label needs; on #5a67d8 it is 4.81:1 (R10.6) */
+      background: var(--color-primary-dark);
+      color: var(--text-on-primary);
     }
 
     .retro-dialog__btn--ok:hover {
-      background: #5a6fd6;
+      background: var(--primary-ink-hover);
     }
 
+    .retro-dialog__btn:focus-visible {
+      outline: 2px solid var(--color-primary-dark);
+      outline-offset: 2px;
+    }
+
+    /* Height-capped flex column. The backdrop is a centred fixed box, so an
+       unbounded body is clipped at BOTH ends rather than scrolled; the cap plus
+       the scrolling body below keeps the title and the Close button in view. */
     .retro-dialog--settings {
       min-width: 320px;
-    }
-
-    .retro-settings {
+      width: min(620px, calc(100vw - 32px));
+      max-height: calc(100dvh - 48px);
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
     }
 
+    /* Responsive multi-column grid: auto-fit collapses to a single column on a
+       narrow viewport with no media query. min-height: 0 is load-bearing, since
+       a grid item's automatic minimum size would otherwise defeat the cap. */
+    .retro-settings {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px 20px;
+      align-content: start;
+      margin-bottom: 16px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    /* The label is the activation target, so it carries the 32px minimum; the
+       native checkbox keeps its platform size inside it. */
     .retro-settings__toggle {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
+      min-height: 32px;
       font-size: 0.85rem;
-      color: #333;
+      color: var(--text-primary);
       cursor: pointer;
     }
 
     .retro-settings__toggle input[type="checkbox"] {
       width: 16px;
       height: 16px;
-      accent-color: #667eea;
+      accent-color: var(--color-primary);
       cursor: pointer;
     }
 
     .retro-settings__layout {
+      grid-column: 1 / -1;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 12px;
       font-size: 0.85rem;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .retro-settings__layout label {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 4px;
+      min-height: 32px;
       cursor: pointer;
     }
 
     .retro-settings__layout input[type="radio"] {
-      accent-color: #667eea;
+      accent-color: var(--color-primary);
       cursor: pointer;
     }
 
     .retro-settings__section-label {
+      grid-column: 1 / -1;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #1a1a2e;
-      margin-top: 0.5rem;
-      padding-bottom: 0.25rem;
-      border-bottom: 1px solid #e0e0e0;
+      color: var(--text-primary);
+      margin-top: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--color-primary-light);
     }
 
     .retro-settings__feelings {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px 20px;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -411,6 +491,12 @@ export class RetroToolbarComponent {
   /** Output event for screenshot capture (parent provides board element) */
   readonly screenshotRequested = output<void>();
 
+  /**
+   * True while a board capture is in progress; renders the screenshot action
+   * in the disabled state so no second capture can start (R4.10).
+   */
+  readonly capturing = this.screenshotService.capturing;
+
   /** Computed state from RetroStateService */
   readonly cardsRevealed = this.retroState.cardsRevealed;
   readonly votingEnabled = this.retroState.votingEnabled;
@@ -421,6 +507,14 @@ export class RetroToolbarComponent {
 
   /** Current config for settings dialog */
   readonly currentConfig = this.retroState.config;
+
+  /**
+   * Stored `fluidCardHeight` value for the settings dialog checkbox.
+   * A config that omits the field (or carries a non-boolean) reads as `true`.
+   */
+  readonly fluidCardHeightSetting = computed<boolean>(() =>
+    resolveFluidCardHeight(this.currentConfig()?.fluidCardHeight)
+  );
 
   /** File input reference (managed via event) */
   private fileInputElement: HTMLInputElement | null = null;

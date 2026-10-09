@@ -1,18 +1,34 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { BasePathService } from '../../services/base-path.service';
+import { AuthService } from '../../services/auth.service';
 import { SessionResumeListComponent } from '../session-resume-list/session-resume-list.component';
+import { RetroResumeListComponent } from '../retro-resume-list/retro-resume-list.component';
+import { UserMenuComponent } from '../user-menu/user-menu.component';
 
 @Component({
   selector: 'app-lobby',
   standalone: true,
-  imports: [CommonModule, FormsModule, SessionResumeListComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SessionResumeListComponent,
+    RetroResumeListComponent,
+    UserMenuComponent,
+  ],
   template: `
     <div class="lobby-container" role="main">
       <div class="lobby-content">
+        <header class="lobby-header">
+          <span class="lobby-header__spacer"></span>
+          @if (authUser(); as user) {
+            <app-user-menu [user]="user" [showRoleSwitch]="false" />
+          }
+        </header>
+
         <h1 class="lobby-title">Agile Application Catalog</h1>
         <p class="lobby-subtitle">Choose an option to get started</p>
 
@@ -88,6 +104,9 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
 
         <!-- Previous Sessions -->
         <app-session-resume-list />
+
+        <!-- Retrospective Boards: an independent sibling with its own request -->
+        <app-retro-resume-list />
       </div>
     </div>
   `,
@@ -110,6 +129,19 @@ import { SessionResumeListComponent } from '../session-resume-list/session-resum
       .lobby-content {
         width: 100%;
         max-width: 700px;
+      }
+
+      .lobby-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        width: 100%;
+        margin-bottom: 0.5rem;
+      }
+
+      .lobby-header__spacer {
+        flex: 1;
+        min-width: 0;
       }
 
       .lobby-title {
@@ -290,10 +322,20 @@ export class LobbyComponent {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly basePath = inject(BasePathService);
+  private readonly auth = inject(AuthService);
 
   sessionInput = '';
   readonly isJoining = signal(false);
   readonly joinError = signal<string | null>(null);
+
+  /**
+   * The authenticated user that the header user control renders, or `null`
+   * when either the stored token or the stored user record is missing, in
+   * which case the header carries no user control (R12.1, R12.6).
+   */
+  readonly authUser = computed(() =>
+    this.auth.getToken() !== null ? this.auth.getCurrentUser()() : null
+  );
 
   startNewGame(): void {
     this.router.navigate(['/create-session']);

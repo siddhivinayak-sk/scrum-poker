@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  TestRequest,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { RetroExportService } from './retro-export.service';
 import { AuthService } from './auth.service';
 import { BasePathService } from './base-path.service';
@@ -49,6 +53,31 @@ describe('RetroExportService', () => {
     httpTesting.verify();
     vi.clearAllMocks();
   });
+
+  /**
+   * `importCSV` reads the file through an asynchronous `FileReader`, so the
+   * request only reaches the testing backend some macrotasks after the call
+   * returns. Polling for it keeps these tests correct under full-suite load,
+   * where a fixed delay can expire before the read has completed and leave
+   * `expectOne` with nothing to match.
+   */
+  async function waitForRequest(url: string, timeoutMs = 10_000): Promise<TestRequest> {
+    const deadline = Date.now() + timeoutMs;
+
+    for (;;) {
+      const matches = httpTesting.match(url);
+      if (matches.length === 1) {
+        return matches[0];
+      }
+      if (matches.length > 1) {
+        throw new Error(`expected one request to ${url}, found ${matches.length}`);
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`timed out waiting for a request to ${url}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  }
 
   describe('exportCSV', () => {
     it('should trigger download with correct filename and MIME type on success', async () => {
@@ -131,18 +160,14 @@ describe('RetroExportService', () => {
 
       const importPromise = service.importCSV(sessionId, file);
 
-      // Allow FileReader to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const req = httpTesting.expectOne('/api/retro/sessions/session-xyz/import');
+      const req = await waitForRequest('/api/retro/sessions/session-xyz/import');
       expect(req.request.method).toBe('POST');
       expect(req.request.headers.get('Authorization')).toBe('Bearer test-token-123');
       expect(req.request.body).toEqual({ csvData: csvContent });
       req.flush({ success: true });
 
       // After successful import, the service fetches updated state
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      const stateReq = httpTesting.expectOne('/api/retro/sessions/session-xyz');
+      const stateReq = await waitForRequest('/api/retro/sessions/session-xyz');
       expect(stateReq.request.method).toBe('GET');
       const mockState = { sessionId: 'session-xyz', board: { columns: [{ id: 'col-1', name: 'Went Well', cards: [] }] } };
       stateReq.flush(mockState);
@@ -159,10 +184,7 @@ describe('RetroExportService', () => {
 
       const importPromise = service.importCSV(sessionId, file);
 
-      // Allow FileReader to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const req = httpTesting.expectOne('/api/retro/sessions/session-err/import');
+      const req = await waitForRequest('/api/retro/sessions/session-err/import');
       req.flush(
         { code: 'INVALID_CSV', message: 'Missing required Column header' },
         { status: 400, statusText: 'Bad Request' }
@@ -180,10 +202,7 @@ describe('RetroExportService', () => {
 
       const importPromise = service.importCSV(sessionId, file);
 
-      // Allow FileReader to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const req = httpTesting.expectOne('/api/retro/sessions/session-err2/import');
+      const req = await waitForRequest('/api/retro/sessions/session-err2/import');
       req.flush(
         { error: 'INVALID_CSV', message: 'CSV must contain Card Text column' },
         { status: 400, statusText: 'Bad Request' }

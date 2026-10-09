@@ -8,7 +8,12 @@ import {
   ALL_FEELING_CATEGORIES,
   RETRO_FEELING_SELECT,
   RETRO_FEELING_UPDATED,
+  RETRO_SESSION_ENDED,
 } from '../../../shared/types';
+
+// Re-exported so the retro routes can broadcast the event without importing
+// shared/types directly (R9.8, R13.1).
+export { RETRO_SESSION_ENDED };
 import { validateToken } from '../services/auth-service';
 import { retroSessionRegistry } from '../services/retro-session-registry';
 import { RetroSession } from '../services/retro-session';
@@ -114,7 +119,11 @@ function broadcastVisibleStateToAll(sessionId: string, session: RetroSession): v
 function handleRetroEvent(ws: WebSocket, user: User, sessionId: string, event: string, data: any): void {
   const session = retroSessionRegistry.getSession(sessionId);
   if (!session) {
+    // The registry no longer holds this session (for example the moderator
+    // ended it). Report it and close the socket without touching any
+    // RetroSession state (R9.14).
     sendError(ws, 'Session not found', 'NOT_FOUND');
+    ws.close(4004, 'Session not found');
     return;
   }
 
@@ -447,7 +456,20 @@ function handleConfigUpdate(ws: WebSocket, user: User, sessionId: string, sessio
     return;
   }
 
-  const { config: updatedConfig, affectedUserIds } = session.updateConfig(config);
+  const { config: updatedConfig, affectedUserIds, rejectedKeys } = session.updateConfig(config);
+
+  // A rejected key means the update carried an invalid value (for example a
+  // non-boolean fluidCardHeight). The stored value is left untouched by
+  // updateConfig; the requester gets an error and no broadcast is sent (R6.17).
+  if (rejectedKeys.length > 0) {
+    sendError(
+      ws,
+      `Invalid configuration value for: ${rejectedKeys.join(', ')}`,
+      'INVALID_CONFIG'
+    );
+    return;
+  }
+
   // Include current votingEnabled so clients can update board state immediately
   const votingEnabled = session.getSessionState().board.votingEnabled;
   broadcastToSession(sessionId, 'retro:config:updated', { config: updatedConfig, votingEnabled });
@@ -600,32 +622,73 @@ export function handleRetroWebSocket(ws: WebSocket, request: IncomingMessage): v
 
   // Handle disconnect
   ws.on('close', () => {
-    const sid = wsSessionMap.get(ws) || sessionId;
-    const uMap = retroSessionClients.get(sid);
-    if (uMap) {
-      const userSockets = uMap.get(participant.id);
-      if (userSockets) {
-        userSockets.delete(ws);
-        // Only remove participant if all connections for this user in this session are closed
-        if (userSockets.size === 0) {
-          uMap.delete(participant.id);
-
-          const retroSession = retroSessionRegistry.getSession(sid);
-          if (retroSession) {
-            retroSession.removeParticipant(participant.id);
-            broadcastToSession(sid, 'retro:participant:left', { participants: retroSession.getParticipants() });
-            // Broadcast feeling cleared for disconnected user
-            broadcastToSession(sid, RETRO_FEELING_UPDATED, { userId: participant.id, category: null });
-          }
-
-          // Clean up empty session client map
-          if (uMap.size === 0) {
-            retroSessionClients.delete(sid);
-          }
-        }
-      }
-    }
+    removeRetroConnection(ws);
   });
+}
+
+/**
+ * Deregister a single retro WebSocket connection: drop it from the
+ * session-scoped client map and, once the user holds no further connection in
+ * that session, remove the participant and tell the remaining clients.
+ *
+ * Extracted from the 'close' handler so the liveness probe can reuse it when it
+ * closes an unresponsive connection.
+ */
+export function removeRetroConnection(ws: WebSocket): void {
+  const sid = wsSessionMap.get(ws);
+  if (!sid) return;
+
+  const user = wsUserMap.get(ws);
+  if (!user) return;
+
+  const uMap = retroSessionClients.get(sid);
+  if (!uMap) return;
+
+  const userSockets = uMap.get(user.id);
+  if (!userSockets) return;
+
+  userSockets.delete(ws);
+  // Only remove participant if all connections for this user in this session are closed
+  if (userSockets.size > 0) return;
+
+  uMap.delete(user.id);
+
+  const retroSession = retroSessionRegistry.getSession(sid);
+  if (retroSession) {
+    retroSession.removeParticipant(user.id);
+    broadcastToSession(sid, 'retro:participant:left', { participants: retroSession.getParticipants() });
+    // Broadcast feeling cleared for disconnected user
+    broadcastToSession(sid, RETRO_FEELING_UPDATED, { userId: user.id, category: null });
+  }
+
+  // Clean up empty session client map
+  if (uMap.size === 0) {
+    retroSessionClients.delete(sid);
+  }
+}
+
+/**
+ * End a retro session for every connected participant.
+ *
+ * The event is broadcast to all sockets of the session *before* any socket is
+ * closed, so each participant — the moderator included — receives
+ * retro:session:ended while its connection is still open (R9.8). Only then are
+ * the sockets closed with a normal 1000 closure and the session's client map
+ * entry dropped.
+ */
+export function endRetroSession(sessionId: string): void {
+  broadcastToSession(sessionId, RETRO_SESSION_ENDED, { sessionId });
+
+  const userMap = retroSessionClients.get(sessionId);
+  if (userMap) {
+    userMap.forEach((sockets) => {
+      sockets.forEach((ws) => {
+        ws.close(1000, 'Session ended by moderator');
+      });
+    });
+  }
+
+  retroSessionClients.delete(sessionId);
 }
 
 /**

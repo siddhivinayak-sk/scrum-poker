@@ -10,6 +10,22 @@ import {
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { Subscription } from 'rxjs';
+import {
+  DECK_PADDING_TOP_PX,
+  SELECTION_LIFT_PX,
+  SELECTION_SCALE,
+} from './card-deck-geometry';
+
+/**
+ * Hover lift for a non-selected card, in pixels. Unscaled, so its required
+ * headroom is `4 + 4` once the focus indicator (`outline: 2px` plus
+ * `outline-offset: 2px`) is counted, which stays inside
+ * `DECK_PADDING_TOP_PX` (R3.3).
+ */
+const HOVER_LIFT_PX = 4;
+
+/** Space reserved below the card row, in pixels. */
+const DECK_PADDING_BOTTOM_PX = 8;
 
 // --- Color mapping ---
 
@@ -191,7 +207,9 @@ function getCardAriaLabel(value: CardValue): string {
         flex-wrap: wrap;
         gap: 0.375rem;
         justify-content: center;
-        padding: 0.5rem 0;
+        /* Reserved headroom for the selection lift plus half the scale growth (R3.4) */
+        padding-top: ${DECK_PADDING_TOP_PX}px;
+        padding-bottom: ${DECK_PADDING_BOTTOM_PX}px;
         position: relative;
       }
 
@@ -226,7 +244,7 @@ function getCardAriaLabel(value: CardValue): string {
       .card-deck__card:hover:not(:disabled):not(.card-deck__card--selected) {
         border-color: color-mix(in srgb, var(--card-accent, #666) 80%, #000);
         box-shadow: var(--shadow-card-hover);
-        transform: translateY(-4px);
+        transform: translateY(-${HOVER_LIFT_PX}px);
       }
 
       .card-deck__card:focus-visible {
@@ -248,14 +266,19 @@ function getCardAriaLabel(value: CardValue): string {
           color-mix(in srgb, var(--card-accent, #1976d2) 25%, #ffffff) 100%
         );
         box-shadow: var(--shadow-card-selected);
-        transform: translateY(-20px) scale(1.05);
+        transform: translateY(-${SELECTION_LIFT_PX}px) scale(${SELECTION_SCALE});
         transition: transform 300ms ease-out, box-shadow 300ms ease-out, border-color 300ms ease-out;
       }
 
+      /*
+       * Reduced motion keeps the same end state (lift and scale above) and only
+       * removes the travel time, so the selected card reaches the identical
+       * position and scale instantly (R3.9).
+       */
       @media (prefers-reduced-motion: reduce) {
         .card-deck__card,
         .card-deck__card--selected {
-          transition: none;
+          transition-duration: 0ms;
         }
       }
 
@@ -283,9 +306,12 @@ function getCardAriaLabel(value: CardValue): string {
         .card-deck {
           flex-wrap: nowrap;
           overflow-x: auto;
+          /* Elevated card renders without vertical clipping; scrollHeight <= clientHeight (R3.6) */
+          overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           scroll-snap-type: x mandatory;
-          padding: 0.5rem 0;
+          padding-top: ${DECK_PADDING_TOP_PX}px;
+          padding-bottom: ${DECK_PADDING_BOTTOM_PX}px;
           gap: 0.5rem;
           justify-content: flex-start;
         }
@@ -333,7 +359,13 @@ export class CardDeckComponent implements OnDestroy {
     return this.dynamicCards();
   }
 
-  private selectedCard: ExtendedCardValue | null = null;
+  /**
+   * The single selected card, or null when nothing is selected. A signal so the
+   * template re-reads it on every change, which makes the single-elevated-card
+   * invariant observable: writing a new value drops the previous card back to a
+   * lift of 0 and a scale of 1 (R3.7).
+   */
+  private readonly selectedCard = signal<ExtendedCardValue | null>(null);
   readonly selectionAnnouncement = signal('');
 
   readonly isRoundActive = computed(() => {
@@ -345,14 +377,14 @@ export class CardDeckComponent implements OnDestroy {
     // Reset selectedCard when a new round starts
     this.subscriptions.push(
       this.wsService.on('round:started').subscribe(() => {
-        this.selectedCard = null;
+        this.selectedCard.set(null);
       })
     );
 
     // Reset selectedCard when the board is cleared
     this.subscriptions.push(
       this.wsService.on('board:cleared').subscribe(() => {
-        this.selectedCard = null;
+        this.selectedCard.set(null);
       })
     );
   }
@@ -362,14 +394,14 @@ export class CardDeckComponent implements OnDestroy {
   }
 
   isSelected(value: ExtendedCardValue): boolean {
-    return this.selectedCard === value;
+    return this.selectedCard() === value;
   }
 
   selectCard(value: ExtendedCardValue): void {
     if (!this.isRoundActive()) {
       return;
     }
-    this.selectedCard = value;
+    this.selectedCard.set(value);
     const card = this.cards.find((c) => c.value === value);
     this.selectionAnnouncement.set(
       card ? `Selected: ${card.ariaLabel}` : `Selected: ${value}`

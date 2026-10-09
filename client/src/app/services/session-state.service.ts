@@ -36,6 +36,7 @@ export class SessionStateService implements OnDestroy {
   private readonly _countdownActive = signal<boolean>(false);
   private readonly _votedUserIds = signal<Set<string>>(new Set());
   private readonly _issueList = signal<IssueItem[]>([]);
+  private readonly _ownerId = signal<string | null>(null);
 
   readonly currentRound: Signal<VotingRound | null> = this._currentRound.asReadonly();
   readonly participants: Signal<User[]> = this._participants.asReadonly();
@@ -48,6 +49,7 @@ export class SessionStateService implements OnDestroy {
   readonly countdownActive: Signal<boolean> = this._countdownActive.asReadonly();
   readonly votedUserIds: Signal<Set<string>> = this._votedUserIds.asReadonly();
   readonly issueList: Signal<IssueItem[]> = this._issueList.asReadonly();
+  readonly ownerId: Signal<string | null> = this._ownerId.asReadonly();
 
   readonly hasRevealPermission = computed(() => {
     const user = this._currentUser();
@@ -100,6 +102,7 @@ export class SessionStateService implements OnDestroy {
     this._countdownActive.set(false);
     this._votedUserIds.set(new Set());
     this._issueList.set([]);
+    this._ownerId.set(null);
   }
 
   private subscribeToEvents(): void {
@@ -114,6 +117,9 @@ export class SessionStateService implements OnDestroy {
         if (state.config) {
           this._sessionConfig.set(state.config);
         }
+
+        // Track the session owner from GameSessionState
+        this._ownerId.set(state.ownerId ?? null);
 
         // Restore issue list from state
         if (state.issueList) {

@@ -3,22 +3,36 @@ import fc from 'fast-check';
 import { getAvatarLetter } from './user-menu.component';
 
 /**
- * Property 18: Avatar first-letter extraction
+ * Property 18: Avatar initial extraction
  *
- * For any non-empty user display name, the avatar SHALL display
- * the uppercase form of the first character of the display name.
+ * For any user display name, the avatar SHALL display the uppercase form of
+ * the first non-whitespace character of the display name, and no initial at
+ * all when the name holds no non-whitespace character.
  *
- * **Validates: Requirements 23.1**
+ * **Validates: Requirements 12.3, 12.10**
  */
-describe('Property 18: Avatar first-letter extraction', () => {
-  it('should return the uppercase first character of any non-empty display name', () => {
+describe('Property 18: Avatar initial extraction', () => {
+  it('should return the uppercase first non-whitespace character of any display name', () => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 1, maxLength: 50 }), (name) => {
+        const leading = name.trimStart();
+        const expected = leading === '' ? '' : [...leading][0].toUpperCase();
+        expect(getAvatarLetter(name)).toBe(expected);
+      }),
+      { numRuns: 100 }
+    );
+  });
+
+  it('should return no initial for whitespace-only display names', () => {
     fc.assert(
       fc.property(
-        fc.string({ minLength: 1, maxLength: 50 }),
+        fc.string({
+          unit: fc.constantFrom(' ', '\t', '\n', '\r', '\u00a0'),
+          minLength: 1,
+          maxLength: 20,
+        }),
         (name) => {
-          const result = getAvatarLetter(name);
-          const expected = name.charAt(0).toUpperCase();
-          expect(result).toBe(expected);
+          expect(getAvatarLetter(name)).toBe('');
         }
       ),
       { numRuns: 100 }

@@ -33,6 +33,17 @@
   --text-secondary: #4a5568;
   --text-on-primary: #ffffff;
 
+  /* Connection status indicator (R11.4-R11.8).
+     The session headers paint --gradient-primary (#667eea -> #764ba2), against
+     which no saturated green or red can reach 3:1, so the indicator sits on its
+     own neutral chip surface and the fill colours are measured against that:
+     #1b7f3b on #ffffff = 5.07:1 and #b3261e on #ffffff = 6.54:1 (both >= 3:1),
+     and --text-on-status on either fill = 5.07:1 / 6.54:1 (both >= 4.5:1). */
+  --status-chip-bg: #ffffff;
+  --status-connected: #1b7f3b;
+  --status-fault: #b3261e;
+  --text-on-status: #ffffff;
+
   /* Toast colors */
   --toast-error: #e53e3e;
   --toast-warning: #dd6b20;
@@ -57,6 +68,51 @@
   --card-color-break: #2c7a7b;
 
   /* Shadows */
+  /* Washes, scrims and blends.
+
+     These are statically precomputed rather than written as color-mix(in srgb, ...)
+     because html2canvas 1.4.1, which rasterises the retro board screenshot, parses
+     only rgb, rgba, hsl and hsla and throws on any other colour function. Chrome
+     serialises a computed color-mix() as color(srgb ...), so a single such
+     declaration anywhere inside the captured subtree aborted the entire capture.
+
+     Each value below is the exact sRGB result of the mix it replaces, so the
+     rendering is unchanged. Mixing with transparent keeps the channel values and
+     scales only the alpha, which is why those are exact by inspection. */
+
+  /* --text-on-primary #ffffff over a primary surface */
+  --wash-on-primary-weak: rgba(255, 255, 255, 0.15);
+  --wash-on-primary-strong: rgba(255, 255, 255, 0.25);
+
+  /* --text-primary #1a1a2e as a neutral hover or active wash */
+  --wash-neutral-weak: rgba(26, 26, 46, 0.08);
+  --wash-neutral-strong: rgba(26, 26, 46, 0.16);
+
+  /* --text-primary #1a1a2e as a modal scrim */
+  --scrim-dialog: rgba(26, 26, 46, 0.4);
+
+  /* --color-primary #667eea as a focus ring */
+  --focus-ring-primary-weak: rgba(102, 126, 234, 0.15);
+  --focus-ring-primary: rgba(102, 126, 234, 0.2);
+
+  /* --toast-error #e53e3e washes and blends with --text-primary #1a1a2e */
+  --wash-error-strong: rgba(229, 62, 62, 0.6);
+  --error-ink-hover: rgb(188, 55, 59);
+  --error-ink-active: rgb(148, 48, 56);
+  /* #e53e3e 10% over --surface-card-deck rgba(255,255,255,0.95) */
+  --wash-error-on-card: rgba(252, 235, 235, 0.955);
+
+  /* --color-primary-dark #5a67d8 blended with --text-primary #1a1a2e */
+  --primary-ink-hover: rgb(77, 88, 182);
+
+  /* --color-primary-light #a3bffa over --surface-card-deck rgba(255,255,255,0.95) */
+  --surface-card-selected: rgba(212, 225, 253, 0.973);
+  --surface-column-drag-over: rgba(231, 238, 254, 0.963);
+
+  /* --card-color-5 #d69e2e as a feelings-strip wash */
+  --wash-accent-weak: rgba(214, 158, 46, 0.12);
+  --wash-accent-medium: rgba(214, 158, 46, 0.24);
+  --wash-accent-strong: rgba(214, 158, 46, 0.32);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);

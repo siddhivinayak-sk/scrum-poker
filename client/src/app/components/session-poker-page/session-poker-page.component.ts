@@ -15,11 +15,14 @@ import { VotingTimerDisplayComponent } from '../voting-timer/voting-timer-displa
 import { ConsensusIndicatorComponent } from '../consensus-indicator/consensus-indicator.component';
 import { FacilitatorFlowComponent } from '../facilitator-flow/facilitator-flow.component';
 import { IssueListPanelComponent } from '../issue-list-panel/issue-list-panel.component';
+import { ConnectionStatusComponent } from '../connection-status/connection-status.component';
+import { ConnectionState } from '@shared/types';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { BasePathService } from '../../services/base-path.service';
+import { EstimateExportService } from '../../services/estimate-export.service';
 
 @Component({
   selector: 'app-session-poker-page',
@@ -40,6 +43,7 @@ import { BasePathService } from '../../services/base-path.service';
     ConsensusIndicatorComponent,
     FacilitatorFlowComponent,
     IssueListPanelComponent,
+    ConnectionStatusComponent,
   ],
   template: `
     @if (sessionNotFound()) {
@@ -68,7 +72,20 @@ import { BasePathService } from '../../services/base-path.service';
             />
           }
           <div class="session-poker-page__header-right">
+            <!-- The indicator lives in the header, a sibling of the blocker wrapper,
+                 so it stays visible and interactive while interaction is paused (R11.1, R11.9). -->
+            <app-connection-status [state]="displayedConnectionState()" />
             <span class="session-poker-page__session-id">Session: {{ sessionId() }}</span>
+            @if (isOwner()) {
+              <button
+                class="session-poker-page__export-btn"
+                type="button"
+                aria-label="Export estimates"
+                title="Export estimates"
+                [disabled]="exportDisabled()"
+                (click)="onExportEstimates()"
+              >⬇</button>
+            }
             @if (isSessionOwner()) {
               <button
                 class="session-poker-page__end-btn"
@@ -117,83 +134,111 @@ import { BasePathService } from '../../services/base-path.service';
         }
 
         <main class="session-poker-page__main">
+          <!-- Each blocker wrapper sits INSIDE its scroll container, so no scrollable
+               element is ever inert and the page keeps scrolling while blocked (R11.12). -->
           <section class="session-poker-page__board-area" id="main-content">
-            <div class="session-poker-page__section session-poker-page__section--story">
-              <app-story-manager />
-              <app-facilitator-flow />
-            </div>
-            <div class="session-poker-page__section session-poker-page__section--board">
-              <app-board />
-            </div>
-            @if (sessionState.currentRound() || sessionState.metrics()) {
-              <div class="session-poker-page__section session-poker-page__section--metrics">
-                <app-metrics />
-                <app-consensus-indicator
-                  [metrics]="sessionState.metrics()"
-                  [votingSystem]="sessionState.sessionConfig()?.votingSystem ?? 'fibonacci'"
-                />
+            <div
+              class="interaction-blocker"
+              [attr.inert]="blocked() ? '' : null"
+              [attr.aria-disabled]="blocked()"
+            >
+              <div class="session-poker-page__section session-poker-page__section--story">
+                <app-story-manager />
+                <app-facilitator-flow />
               </div>
-            }
-            <div class="session-poker-page__section session-poker-page__section--card-deck">
-              <app-card-deck />
+              <div class="session-poker-page__section session-poker-page__section--board">
+                <app-board />
+              </div>
+              @if (sessionState.currentRound() || sessionState.metrics()) {
+                <div class="session-poker-page__section session-poker-page__section--metrics">
+                  <app-metrics />
+                  <app-consensus-indicator
+                    [metrics]="sessionState.metrics()"
+                    [votingSystem]="sessionState.sessionConfig()?.votingSystem ?? 'fibonacci'"
+                  />
+                </div>
+              }
+              <div class="session-poker-page__section session-poker-page__section--card-deck">
+                <app-card-deck />
+              </div>
             </div>
           </section>
 
           <!-- Desktop sidebar -->
           <aside class="session-poker-page__sidebar session-poker-page__sidebar--desktop">
-            <details class="session-poker-page__accordion" open>
-              <summary class="session-poker-page__accordion-header">Issues</summary>
-              <div class="session-poker-page__accordion-content">
-                <app-issue-list-panel />
-              </div>
-            </details>
-            <details class="session-poker-page__accordion">
-              <summary class="session-poker-page__accordion-header">History</summary>
-              <div class="session-poker-page__accordion-content">
-                <app-session-history />
-              </div>
-            </details>
+            <div
+              class="interaction-blocker"
+              [attr.inert]="blocked() ? '' : null"
+              [attr.aria-disabled]="blocked()"
+            >
+              <details class="session-poker-page__accordion" open>
+                <summary class="session-poker-page__accordion-header">Issues</summary>
+                <div class="session-poker-page__accordion-content">
+                  <app-issue-list-panel />
+                </div>
+              </details>
+              <details class="session-poker-page__accordion">
+                <summary class="session-poker-page__accordion-header">History</summary>
+                <div class="session-poker-page__accordion-content">
+                  <app-session-history />
+                </div>
+              </details>
+            </div>
           </aside>
 
           <!-- Mobile overlay toggle + overlay -->
           <div class="session-poker-page__mobile-history">
-            <button
-              class="session-poker-page__history-toggle"
-              (click)="toggleHistoryOverlay()"
-              [attr.aria-expanded]="historyOverlayOpen()"
-              aria-controls="history-overlay"
-              aria-label="Toggle session history"
+            <div
+              class="interaction-blocker"
+              [attr.inert]="blocked() ? '' : null"
+              [attr.aria-disabled]="blocked()"
             >
-              History
-            </button>
-
-            @if (historyOverlayOpen()) {
-              <div
-                class="session-poker-page__overlay-backdrop"
+              <button
+                class="session-poker-page__history-toggle"
                 (click)="toggleHistoryOverlay()"
-                aria-hidden="true"
-              ></div>
-              <aside
-                id="history-overlay"
-                class="session-poker-page__sidebar-overlay"
-                role="complementary"
-                aria-label="Session history overlay"
+                [attr.aria-expanded]="historyOverlayOpen()"
+                aria-controls="history-overlay"
+                aria-label="Toggle session history"
               >
-                <div class="session-poker-page__overlay-header">
-                  <h2>History</h2>
-                  <button
-                    class="session-poker-page__overlay-close"
-                    (click)="toggleHistoryOverlay()"
-                    aria-label="Close session history"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <app-session-history />
-              </aside>
-            }
+                History
+              </button>
+
+              @if (historyOverlayOpen()) {
+                <div
+                  class="session-poker-page__overlay-backdrop"
+                  (click)="toggleHistoryOverlay()"
+                  aria-hidden="true"
+                ></div>
+                <aside
+                  id="history-overlay"
+                  class="session-poker-page__sidebar-overlay"
+                  role="complementary"
+                  aria-label="Session history overlay"
+                >
+                  <div class="session-poker-page__overlay-header">
+                    <h2>History</h2>
+                    <button
+                      class="session-poker-page__overlay-close"
+                      (click)="toggleHistoryOverlay()"
+                      aria-label="Close session history"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <app-session-history />
+                </aside>
+              }
+            </div>
           </div>
         </main>
+
+        <!-- Status message sits OUTSIDE every blocker wrapper so assistive technology
+             still announces it while the wrapped content is inert (R11.11, R11.13). -->
+        @if (blocked()) {
+          <p class="interaction-blocker__status" role="status" aria-live="polite">
+            Interaction is paused until the connection is restored.
+          </p>
+        }
 
         <app-countdown-overlay
           [active]="sessionState.countdownActive()"
@@ -360,6 +405,43 @@ import { BasePathService } from '../../services/base-path.service';
         transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
       }
 
+      /* Export estimates control (R1.1: target size at least 32px by 32px) */
+      .session-poker-page__export-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text-on-primary);
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color 200ms ease, box-shadow 200ms ease, transform 100ms ease;
+      }
+
+      .session-poker-page__export-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.25);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .session-poker-page__export-btn:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+
+      .session-poker-page__export-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .session-poker-page__export-btn:focus-visible {
+        outline: 2px solid var(--text-on-primary);
+        outline-offset: 2px;
+      }
+
       .session-poker-page__end-btn {
         padding: 0.5rem 0.875rem;
         border: 1px solid rgba(255, 100, 100, 0.5);
@@ -447,6 +529,31 @@ import { BasePathService } from '../../services/base-path.service';
         gap: 0.5rem;
         min-width: 0;
         overflow-y: auto;
+      }
+
+      /* The blocker wrapper carries the column layout the sections used to get from
+         the scroll container, so inserting it changes nothing visually. The
+         inert attribute keeps
+         the content fully visible — no opacity, no display change (R11.12). */
+      .session-poker-page__board-area > .interaction-blocker {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      /* Paused-interaction message (R11.11). */
+      .interaction-blocker__status {
+        margin: 0.5rem 0 0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        background: var(--surface-board);
+        box-shadow: var(--shadow-sm);
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-align: center;
       }
 
       /* Section containers with distinct surface colors */
@@ -682,6 +789,7 @@ import { BasePathService } from '../../services/base-path.service';
       }
 
       @media (prefers-reduced-motion: reduce) {
+        .session-poker-page__export-btn,
         .session-poker-page__copy-btn,
         .session-poker-page__qr-toggle,
         .session-poker-page__history-toggle,
@@ -763,6 +871,7 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
   private readonly basePath = inject(BasePathService);
+  private readonly exportService = inject(EstimateExportService);
   readonly sessionState = inject(SessionStateService);
 
   readonly sessionId = signal<string>('');
@@ -770,6 +879,35 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   readonly showQrCode = signal<boolean>(false);
   readonly historyOverlayOpen = signal<boolean>(false);
   readonly showEndSessionDialog = signal<boolean>(false);
+
+  /**
+   * Flipped once the `/exists` check resolves, which is the moment the page
+   * either opens the socket or gives up on this session.
+   *
+   * Requirements: R11.1
+   */
+  readonly connectAttempted = signal<boolean>(false);
+
+  /**
+   * The state the indicator shows. Before the first connection attempt the
+   * service still reports its untouched initial `'disconnected'` value, so the
+   * page reports `reconnecting` for that window instead — the indicator reads
+   * `reconnecting` from the very first render.
+   *
+   * Requirements: R11.1
+   */
+  readonly displayedConnectionState = computed<ConnectionState>(() =>
+    this.connectAttempted() ? this.wsService.connectionState() : 'reconnecting'
+  );
+
+  /**
+   * True while session interaction is paused, which is exactly while the
+   * displayed state is not `connected`. Being a computed signal, the blocker
+   * flips in the same change-detection cycle as the state.
+   *
+   * Requirements: R11.9, R11.10, R11.13
+   */
+  readonly blocked = computed<boolean>(() => this.displayedConnectionState() !== 'connected');
 
   readonly sessionUrl = computed(() => {
     const id = this.sessionId();
@@ -786,6 +924,26 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
     // (the session creator is always assigned as moderator/owner)
     return user.role === 'moderator';
   });
+
+  /**
+   * True when the signed-in user owns this Game_Session.
+   *
+   * Requirements: R1.1, R1.2
+   */
+  readonly isOwner = computed(() => {
+    const ownerId = this.sessionState.ownerId();
+    return ownerId !== null && ownerId === this.sessionState.currentUser()?.id;
+  });
+
+  /**
+   * The export control is disabled while the session holds no completed
+   * estimates, and while an export request is awaiting a response.
+   *
+   * Requirements: R1.3, R1.22
+   */
+  readonly exportDisabled = computed(
+    () => this.sessionState.history().length === 0 || this.exportService.inFlight()
+  );
 
   readonly currentRoundStartedAt = computed(() => {
     const round = this.sessionState.currentRound();
@@ -809,6 +967,9 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
     // Check if session exists before connecting
     this.http.get<{ exists: boolean }>(this.basePath.getApiUrl(`/api/sessions/${id}/exists`)).subscribe({
       next: (response) => {
+        // The check has resolved, so the indicator switches from the pre-connect
+        // `reconnecting` reading to the service's own state (R11.1).
+        this.connectAttempted.set(true);
         if (!response.exists) {
           this.sessionNotFound.set(true);
           return;
@@ -816,6 +977,7 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
         this.connectToSession(id);
       },
       error: () => {
+        this.connectAttempted.set(true);
         this.sessionNotFound.set(true);
       },
     });
@@ -854,6 +1016,15 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
         },
       });
     }
+  }
+
+  /**
+   * Request the completed-estimate export document for this session.
+   *
+   * Requirements: R1.1, R1.3, R1.22
+   */
+  onExportEstimates(): void {
+    void this.exportService.exportEstimates(this.sessionId());
   }
 
   toggleHistoryOverlay(): void {

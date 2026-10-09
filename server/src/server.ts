@@ -8,8 +8,9 @@ import { authRouter } from './routes/auth';
 import { sessionsRouter } from './routes/sessions';
 import { retroRouter } from './routes/retro-routes';
 import { sessionRegistry } from './services/session-registry';
-import { handleWebSocket, setWebSocketServer } from './websocket/handler';
-import { handleRetroWebSocket } from './websocket/retro-handler';
+import { handleWebSocket, setWebSocketServer, removePokerConnection } from './websocket/handler';
+import { handleRetroWebSocket, removeRetroConnection } from './websocket/retro-handler';
+import { attachLivenessProbe } from './websocket/liveness';
 
 const app = express();
 const server = http.createServer(app);
@@ -163,6 +164,19 @@ setWebSocketServer(wss);
 wss.on('connection', handleWebSocket);
 retroWss.on('connection', handleRetroWebSocket);
 
+// Liveness probe for the poker server: ping every connection every 30 seconds
+// and drop the participant after two consecutive missed pongs (R11.20–R11.22).
+const pokerLivenessProbe = attachLivenessProbe(wss, {
+  onDead: (ws) => removePokerConnection(ws),
+});
+
+// A second, fully separate probe for the retro server. The two probes share no
+// state, so a closure detected on one server never touches the other server's
+// sockets (R11.22, R13.9, R13.14).
+const retroLivenessProbe = attachLivenessProbe(retroWss, {
+  onDead: (ws) => removeRetroConnection(ws),
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
@@ -173,4 +187,4 @@ server.listen(PORT, () => {
   sessionRegistry.startCleanupTimer();
 });
 
-export { app, server, wss, retroWss };
+export { app, server, wss, retroWss, pokerLivenessProbe, retroLivenessProbe };

@@ -126,6 +126,7 @@ import {
   VotingMetrics,
   HistoryEntry,
   ExtendedCardValue,
+  ConnectionState,
 } from '@shared/types';
 
 // --- Stub child components to avoid pulling in real implementations ---
@@ -183,6 +184,11 @@ class StubFacilitatorFlowComponent {}
 
 @Component({ selector: 'app-issue-list-panel', standalone: true, template: '' })
 class StubIssueListPanelComponent {}
+
+@Component({ selector: 'app-connection-status', standalone: true, template: '<span class="stub-connection-status" [attr.data-state]="state()"></span>' })
+class StubConnectionStatusComponent {
+  readonly state = input.required<ConnectionState>();
+}
 
 // --- Unit Tests ---
 
@@ -311,6 +317,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       hasIssuePermission: hasIssuePermissionSignal,
       votingSystemCards: votingSystemCardsSignal,
       issueList: signal([]),
+      ownerId: signal<string | null>(null),
     };
 
     TestBed.configureTestingModule({
@@ -353,6 +360,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
           StubConsensusIndicatorComponent,
           StubFacilitatorFlowComponent,
           StubIssueListPanelComponent,
+          StubConnectionStatusComponent,
         ],
       },
     });
