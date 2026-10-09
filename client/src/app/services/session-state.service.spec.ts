@@ -892,4 +892,68 @@ describe('SessionStateService', () => {
       expect(service.issueList()).toEqual([]);
     });
   });
+
+  describe('ownerId signal', () => {
+    function gameState(ownerId: string): GameSessionState {
+      return {
+        sessionId: 'sess-123',
+        config: {
+          votingSystem: 'fibonacci',
+          revealPermission: { mode: 'moderator-only', allowedUserIds: [] },
+          issuePermission: { mode: 'moderator-only', allowedUserIds: [] },
+          autoReveal: false,
+          countdownAnimation: true,
+        },
+        ownerId,
+        createdAt: new Date().toISOString(),
+        currentRound: null,
+        participants: [mockAuthUser],
+        history: [],
+        isRevealed: false,
+        issueList: [],
+      };
+    }
+
+    it('should be null before any session:state event', () => {
+      expect(service.ownerId()).toBeNull();
+    });
+
+    it('should be set from the session:state payload', () => {
+      emitEvent('session:state', { state: gameState('owner-1') });
+
+      expect(service.ownerId()).toBe('owner-1');
+    });
+
+    it('should be replaced by the owner of a later session:state event', () => {
+      emitEvent('session:state', { state: gameState('owner-1') });
+      emitEvent('session:state', { state: gameState('owner-2') });
+
+      expect(service.ownerId()).toBe('owner-2');
+    });
+
+    it('should be null when session:state carries no ownerId', () => {
+      emitEvent('session:state', { state: gameState('owner-1') });
+      expect(service.ownerId()).toBe('owner-1');
+
+      const state: SessionState = {
+        currentRound: null,
+        participants: [mockAuthUser],
+        history: [],
+        isRevealed: false,
+      };
+
+      emitEvent('session:state', { state });
+
+      expect(service.ownerId()).toBeNull();
+    });
+
+    it('should be cleared by reset()', () => {
+      emitEvent('session:state', { state: gameState('owner-1') });
+      expect(service.ownerId()).toBe('owner-1');
+
+      service.reset();
+
+      expect(service.ownerId()).toBeNull();
+    });
+  });
 });

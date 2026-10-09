@@ -650,30 +650,49 @@ export function handleWebSocket(ws: WebSocket, request: IncomingMessage): void {
 
   // Handle disconnect
   ws.on('close', () => {
-    const sid = wsSessionMap.get(ws) || sessionId;
-    const uMap = sessionClients.get(sid);
-    if (uMap) {
-      const userSockets = uMap.get(participant.id);
-      if (userSockets) {
-        userSockets.delete(ws);
-        // Only remove participant if all connections for this user in this session are closed
-        if (userSockets.size === 0) {
-          uMap.delete(participant.id);
-
-          const gameSession = sessionRegistry.getSession(sid);
-          if (gameSession) {
-            gameSession.removeParticipant(participant.id);
-            broadcastToSession(sid, 'participant:left', { participants: gameSession.getParticipants() });
-          }
-
-          // Clean up empty session client map
-          if (uMap.size === 0) {
-            sessionClients.delete(sid);
-          }
-        }
-      }
-    }
+    removePokerConnection(ws);
   });
+}
+
+/**
+ * Deregister a single poker WebSocket connection: drop it from the
+ * session-scoped client map and, once the user holds no further connection in
+ * that session, remove the participant from the session and tell the remaining
+ * clients.
+ *
+ * Extracted from the 'close' handler so the liveness probe can reuse it when it
+ * closes an unresponsive connection (R11.21). The session and the user are
+ * resolved from the connection maps, so the socket is the only argument needed.
+ */
+export function removePokerConnection(ws: WebSocket): void {
+  const sid = wsSessionMap.get(ws);
+  if (!sid) return;
+
+  const user = wsUserMap.get(ws);
+  if (!user) return;
+
+  const uMap = sessionClients.get(sid);
+  if (!uMap) return;
+
+  const userSockets = uMap.get(user.id);
+  if (!userSockets) return;
+
+  userSockets.delete(ws);
+  // Only remove participant if all connections for this user in this session are closed
+  if (userSockets.size > 0) return;
+
+  uMap.delete(user.id);
+
+  const gameSession = sessionRegistry.getSession(sid);
+  if (gameSession) {
+    gameSession.removeParticipant(user.id);
+    broadcastToSession(sid, 'participant:left', { participants: gameSession.getParticipants() });
+  }
+
+  // Clean up empty session client map
+  if (uMap.size === 0) {
+    sessionClients.delete(sid);
+  }
 }
 
 /**

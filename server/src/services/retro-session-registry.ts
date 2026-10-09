@@ -74,6 +74,21 @@ export class RetroSessionRegistry {
   }
 
   /**
+   * Get every retro session owned by the given user.
+   * No limit is applied — all of the owner's sessions are returned (R8.2).
+   * Read-only: the returned array is a fresh array of live session references.
+   */
+  getSessionsByOwner(ownerId: string): RetroSession[] {
+    const owned: RetroSession[] = [];
+    for (const session of this.sessions.values()) {
+      if (session.ownerId === ownerId) {
+        owned.push(session);
+      }
+    }
+    return owned;
+  }
+
+  /**
    * Delete a retro session by its ID.
    * @returns true if the session was found and deleted, false otherwise
    */

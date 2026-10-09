@@ -65,6 +65,7 @@ describe('RetroToolbarComponent - Feelings Settings Section', () => {
 
     const mockScreenshotService = {
       captureBoard: vi.fn(),
+      capturing: signal(false),
     };
 
     const mockToastService = {

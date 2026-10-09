@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WebSocketService, calculateBackoff } from './websocket.service';
 import { ToastService } from './toast.service';
@@ -323,17 +324,25 @@ describe('WebSocketService', () => {
   });
 
   describe('toast notifications', () => {
-    it('should show error toast on unexpected connection close', () => {
+    /**
+     * R13.18 exception (task 24.11). This case asserted
+     * `'Connection lost. Attempting to reconnect...'` on every drop. R11.14 requires
+     * the loss to be conveyed through the connection status indicator alone and
+     * R11.26 forbids any notification reporting a connection loss, so the toast was
+     * removed in task 24.3 and this case now asserts its replacement: the drop is
+     * silent, and the state signal is the only channel reporting it.
+     */
+    it('should show no toast on unexpected connection close, reporting it through the state instead', () => {
       service.connect('test-token');
       const ws = getLatestMockWs();
       ws.simulateOpen();
 
       ws.simulateClose();
 
-      expect(mockToastService.show).toHaveBeenCalledWith(
-        'error',
-        'Connection lost. Attempting to reconnect...'
-      );
+      expect(mockToastService.show).not.toHaveBeenCalled();
+      expect(service.connectionState()).toBe('reconnecting');
+
+      service.disconnect();
     });
 
     it('should not show error toast on manual disconnect', () => {
@@ -346,7 +355,18 @@ describe('WebSocketService', () => {
       expect(mockToastService.show).not.toHaveBeenCalled();
     });
 
-    it('should show warning toast during reconnection attempts', () => {
+    /**
+     * R13.18 exception (task 24.11). This case asserted
+     * `` `Reconnecting... (attempt 1)` `` on the first retry. R11.26 forbids any
+     * notification reporting an attempt number and R11.15 allows at most one
+     * notification per episode, shown only at the give-up threshold, so the
+     * per-attempt toast was removed in task 24.3. Its replacement asserts the
+     * counterpart rule: nine attempts stay silent and the tenth — the one that
+     * reaches the threshold — carries exactly one tagged `error` notification
+     * (R11.15, R11.16, R11.23, R11.24).
+     */
+    it('should show no toast for the first nine reconnection attempts and exactly one at the tenth', () => {
+      const routerSpy = vi.spyOn(TestBed.inject(Router) as any, 'navigate').mockResolvedValue(true);
       vi.useFakeTimers();
       try {
         service.connect('test-token');
@@ -354,16 +374,35 @@ describe('WebSocketService', () => {
         ws1.simulateOpen();
 
         ws1.simulateClose();
-        // Clear the error toast call from onclose
         mockToastService.show.mockClear();
 
-        // Advance past the first reconnect delay (1000ms)
-        vi.advanceTimersByTime(1000);
+        // Delay preceding attempt `i + 1`: min(2^i * 1000, 30000) ms (R11.19).
+        const backoffDelays = [1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000, 30000, 30000];
 
+        // Attempts 1 through 9 each open a socket that fails again, in silence.
+        for (let i = 0; i < 9; i++) {
+          vi.advanceTimersByTime(backoffDelays[i]);
+          getLatestMockWs().simulateClose();
+        }
+
+        expect(mockToastService.show).not.toHaveBeenCalled();
+        expect(routerSpy).not.toHaveBeenCalled();
+        expect(service.connectionState()).toBe('reconnecting');
+
+        // The tenth attempt reaches the give-up threshold: one notification, one
+        // navigation, no further socket.
+        const openedBeforeGivingUp = MockWebSocket.instances.length;
+        vi.advanceTimersByTime(backoffDelays[9]);
+
+        expect(mockToastService.show).toHaveBeenCalledTimes(1);
         expect(mockToastService.show).toHaveBeenCalledWith(
-          'warning',
-          'Reconnecting... (attempt 1)'
+          'error',
+          'Unable to connect after 10 attempts. Redirecting to login.',
+          { tag: 'connection' }
         );
+        expect(routerSpy).toHaveBeenCalledWith(['/login']);
+        expect(service.connectionState()).toBe('disconnected');
+        expect(MockWebSocket.instances.length).toBe(openedBeforeGivingUp);
 
         service.disconnect();
       } finally {

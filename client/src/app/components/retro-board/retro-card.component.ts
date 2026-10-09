@@ -1,9 +1,82 @@
-import { Component, input, inject, signal, computed, ElementRef, viewChild, HostListener, afterNextRender } from '@angular/core';
+import {
+  Component,
+  input,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  viewChild,
+  HostListener,
+  afterNextRender,
+  afterRenderEffect,
+  DestroyRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RetroCard } from '@shared/types';
+import { RetroCard, resolveFluidCardHeight } from '@shared/types';
 import { RetroWebSocketService } from '../../services/retro-websocket.service';
 import { RetroStateService } from '../../services/retro-state.service';
+import { computeTextAreaHeightPx, measureLineCount } from '../../services/retro-card-height';
+
+/**
+ * What the render effect reads off the live text area and hands to
+ * `computeTextAreaHeightPx`. Kept as one record so the applied height is a single
+ * `computed` over "measured geometry × fluid mode": flipping `fluidCardHeight`
+ * re-clamps the already measured line count without touching the DOM (R6.16).
+ */
+interface TextAreaGeometry {
+  /** Rendered line count of the current text, DOM-measured or wrap-estimated. */
+  lineCount: number;
+  /** Rendered height of one line, or `NaN` when the environment reports no layout. */
+  lineHeightPx: number;
+  /** Top + bottom padding of the text area. */
+  verticalPaddingPx: number;
+}
+
+/** Before the first measurement: no lines, no usable metrics — the height module's own
+ *  defaults and the minimum clamp then decide the first painted height. */
+const UNMEASURED_GEOMETRY: TextAreaGeometry = {
+  lineCount: 0,
+  lineHeightPx: Number.NaN,
+  verticalPaddingPx: Number.NaN,
+};
+
+function geometryEquals(a: TextAreaGeometry, b: TextAreaGeometry): boolean {
+  // Object.is so an unchanged `NaN` metric does not look like a change and keep the
+  // render effect writing on every pass.
+  return (
+    a.lineCount === b.lineCount &&
+    Object.is(a.lineHeightPx, b.lineHeightPx) &&
+    Object.is(a.verticalPaddingPx, b.verticalPaddingPx)
+  );
+}
+
+/**
+ * Every browser reports computed length properties in px. A value in any other unit
+ * means the environment performed no layout (the test DOM echoes the authored
+ * `0.85rem` / `1.4`), so it is rejected and the caller falls back.
+ */
+function parseComputedPx(raw: string): number {
+  if (!raw.endsWith('px')) {
+    return Number.NaN;
+  }
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN;
+}
+
+function orZero(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
+/** Average glyph advance as a fraction of the font size, for the DOM-free wrap only. */
+const AVERAGE_CHAR_WIDTH_RATIO = 0.5;
+
+/**
+ * Content width assumed when the element reports none (pre-layout, test DOM). Close to
+ * the 200 px the horizontal column layout pins a card to, so the fallback height stays
+ * plausible rather than degenerating to one character per line.
+ */
+const FALLBACK_AVAILABLE_WIDTH_PX = 200;
 
 @Component({
   selector: 'app-retro-card',
@@ -18,17 +91,21 @@ import { RetroStateService } from '../../services/retro-state.service';
       (dragstart)="onDragStart($event)"
       (dragend)="onDragEnd($event)"
     >
-      <!-- Editable text area -->
+      <!-- Editable text area. There is deliberately no value binding: the text is
+           written from the render effect, and only while the element is unfocused, so an
+           inbound update can never disturb a caret, a scroll offset or uncommitted
+           typing (R5.8, R5.9). -->
       <textarea
         #textArea
         class="retro-card__text"
-        [value]="card().text"
+        [style.height.px]="textAreaHeightPx()"
         [disabled]="isCompleted()"
+        (input)="onTextInput()"
+        (focus)="onTextFocus()"
         (blur)="onTextBlur($event)"
         (keydown.enter)="onTextEnter($event)"
         (mousedown)="$event.stopPropagation()"
         draggable="false"
-        rows="4"
         placeholder="Enter your thought..."
         aria-label="Card text"
       ></textarea>
@@ -166,9 +243,14 @@ import { RetroStateService } from '../../services/retro-state.service';
   `,
   styles: [`
     .retro-card {
-      padding: 0.375rem 0;
-      background: #e8ecf0;
-      border: 1px solid #d0d5dd;
+      /* Column stack so the text area, author line, action row and comment section
+         each take their own band of the card box and cannot overlap at any text
+         length (R7.18). */
+      display: flex;
+      flex-direction: column;
+      padding: 8px 0;
+      background: var(--surface-board);
+      border: 1px solid var(--color-primary-light);
       border-radius: 6px;
       font-size: 0.75rem;
       transition: box-shadow 0.15s ease, opacity 0.15s ease;
@@ -181,13 +263,16 @@ import { RetroStateService } from '../../services/retro-state.service';
     }
 
     .retro-card.owner-highlight {
-      background: #d0e8ff;
-      border-color: #a8d4f5;
+      /* No token for the own-card tint: mixed from the primary palette over the
+         card-deck surface so it stays distinct from --surface-board while keeping
+         --text-primary above 4.5:1. */
+      background: var(--surface-card-selected);
+      border-color: var(--color-primary);
     }
 
     .retro-card.dragging {
       opacity: 0.4;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-md);
     }
 
     /* Text area */
@@ -195,52 +280,58 @@ import { RetroStateService } from '../../services/retro-state.service';
       width: 100%;
       border: none;
       background: transparent;
-      font-size: 0.85rem;
+      /* 12.8px, above the 12px floor R7.3 sets for every retro font size */
+      font-size: 0.8rem;
       font-family: inherit;
       resize: none;
       outline: none;
-      padding: 0.2rem 0.375rem;
-      margin: 0 0 0.125rem;
-      word-break: break-word;
+      padding: 4px 8px;
+      margin: 0 0 4px;
       line-height: 1.4;
-      color: #1a1a2e;
-      min-height: 4.5em;
+      color: var(--text-primary);
+      /* The height is bound inline from the measured line count; overflow therefore
+         scrolls inside this box only, never over the author line, action row or
+         comment section below it (R5.11, R6.5, R6.6). */
+      overflow-y: auto;
+      scrollbar-gutter: stable;
       box-sizing: border-box;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
 
     .retro-card__text:focus {
-      background: #fff;
+      background: var(--surface-card-deck);
       border-radius: 3px;
     }
 
     .retro-card__text:disabled {
-      color: #333;
+      color: var(--text-secondary);
       cursor: default;
     }
 
     /* Author */
     .retro-card__author {
       display: block;
-      font-size: 0.65rem;
-      color: #666;
-      margin-bottom: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
       font-style: italic;
-      padding: 0 0.375rem;
+      padding: 0 8px;
     }
 
     /* Actions row */
     .retro-card__actions {
       display: flex;
       align-items: center;
-      gap: 0.15rem;
+      gap: 4px;
       margin-top: 0;
-      padding: 0 0.375rem;
+      padding: 0 8px;
     }
 
     .retro-card__vote-section {
       display: flex;
       align-items: center;
-      gap: 0.1rem;
+      gap: 4px;
     }
 
     .retro-card__vote-btn,
@@ -250,10 +341,10 @@ import { RetroStateService } from '../../services/retro-state.service';
       border: none;
       background: transparent;
       cursor: pointer;
-      font-size: 0.7rem;
-      padding: 0.025rem;
-      min-width: 24px;
-      min-height: 24px;
+      font-size: 0.75rem;
+      padding: 0;
+      min-width: 32px;
+      min-height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -265,7 +356,9 @@ import { RetroStateService } from '../../services/retro-state.service';
     .retro-card__comment-btn:hover,
     .retro-card__emoji-btn:hover,
     .retro-card__delete-btn:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.08);
+      /* No token for a neutral hover wash: mixed from the text token so it tints
+         whichever card background is underneath. */
+      background: var(--wash-neutral-weak);
     }
 
     .retro-card__vote-btn:disabled,
@@ -275,8 +368,8 @@ import { RetroStateService } from '../../services/retro-state.service';
     }
 
     .retro-card__vote-count {
-      font-size: 0.65rem;
-      color: #555;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
@@ -295,15 +388,16 @@ import { RetroStateService } from '../../services/retro-state.service';
       bottom: 100%;
       left: 50%;
       transform: translateX(-50%);
-      background: #fff;
-      border: 1px solid #d0d5dd;
+      background: var(--surface-card-deck);
+      border: 1px solid var(--color-primary-light);
       border-radius: 6px;
-      padding: 0.25rem;
+      padding: 4px;
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       gap: 0;
-      width: 180px;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+      /* 6 columns x 32px option + 2x4px padding (R7.5) */
+      width: 200px;
+      box-shadow: var(--shadow-md);
       z-index: 100;
       margin-bottom: 4px;
     }
@@ -313,9 +407,9 @@ import { RetroStateService } from '../../services/retro-state.service';
       background: transparent;
       cursor: pointer;
       font-size: 0.9rem;
-      padding: 0.15rem;
-      min-width: 26px;
-      min-height: 26px;
+      padding: 0;
+      min-width: 32px;
+      min-height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -323,23 +417,23 @@ import { RetroStateService } from '../../services/retro-state.service';
     }
 
     .retro-card__emoji-option:hover {
-      background: #f0f0f0;
+      background: var(--wash-neutral-weak);
     }
 
     /* Comments section */
     .retro-card__comments {
-      margin-top: 0.375rem;
-      padding: 0.25rem 0.375rem 0;
-      border-top: 1px solid #ccc;
+      margin-top: 8px;
+      padding: 4px 8px 0;
+      border-top: 1px solid var(--color-primary-light);
     }
 
     .retro-card__comment {
       display: flex;
       align-items: flex-start;
-      gap: 0.25rem;
-      margin-bottom: 0.25rem;
-      font-size: 0.7rem;
-      color: #444;
+      gap: 4px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      color: var(--text-primary);
     }
 
     .retro-card__comment-text {
@@ -352,11 +446,11 @@ import { RetroStateService } from '../../services/retro-state.service';
       border: none;
       background: transparent;
       cursor: pointer;
-      font-size: 0.65rem;
-      color: #999;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
       padding: 0;
-      min-width: 18px;
-      min-height: 18px;
+      min-width: 32px;
+      min-height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -364,7 +458,8 @@ import { RetroStateService } from '../../services/retro-state.service';
     }
 
     .retro-card__comment-delete:hover:not(:disabled) {
-      color: #d32f2f;
+      /* Darkened destructive red so the glyph keeps 4.5:1 on the card surface */
+      color: var(--error-ink-hover);
     }
 
     .retro-card__comment-delete:disabled {
@@ -375,55 +470,61 @@ import { RetroStateService } from '../../services/retro-state.service';
     /* Add comment */
     .retro-card__comment-add {
       display: flex;
-      gap: 0.25rem;
-      margin-top: 0.25rem;
+      gap: 4px;
+      margin-top: 4px;
     }
 
     .retro-card__comment-input {
       flex: 1;
-      border: 1px solid #d0d5dd;
+      border: 1px solid var(--color-primary-light);
       border-radius: 4px;
-      padding: 0.25rem 0.375rem;
-      font-size: 0.7rem;
+      padding: 4px 8px;
+      font-size: 0.75rem;
       font-family: inherit;
       outline: none;
-      background: #fff;
+      background: var(--surface-card-deck);
+      color: var(--text-primary);
+      min-height: 32px;
+      box-sizing: border-box;
     }
 
     .retro-card__comment-input:focus {
-      border-color: #667eea;
+      border-color: var(--color-primary);
     }
 
     .retro-card__comment-submit {
       border: none;
-      background: #667eea;
-      color: #fff;
+      /* --color-primary-dark, not --color-primary: white on #667eea is 3.66:1,
+         below the 4.5:1 the label needs; on #5a67d8 it is 4.81:1 (R7.4) */
+      background: var(--color-primary-dark);
+      color: var(--text-on-primary);
       border-radius: 4px;
-      padding: 0.25rem 0.5rem;
-      font-size: 0.7rem;
+      padding: 4px 8px;
+      font-size: 0.75rem;
       cursor: pointer;
-      min-width: 28px;
-      min-height: 28px;
+      min-width: 32px;
+      min-height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
     .retro-card__comment-submit:disabled {
-      background: #ccc;
+      background: var(--color-primary-light);
+      color: var(--text-primary);
       cursor: not-allowed;
     }
 
     .retro-card__comment-submit:hover:not(:disabled) {
-      background: #5a6fd6;
+      background: var(--primary-ink-hover);
     }
 
     @media (prefers-reduced-motion: reduce) {
       .retro-card,
-      .retro-card__vote-btn,
-      .retro-card__comment-btn,
-      .retro-card__delete-btn {
+      .retro-card * {
         transition: none;
+        transition-duration: 0s;
+        animation-duration: 0s;
       }
     }
   `],
@@ -432,11 +533,27 @@ export class RetroCardComponent {
   private readonly ws = inject(RetroWebSocketService);
   private readonly retroState = inject(RetroStateService);
   private readonly elementRef = inject(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly card = input.required<RetroCard>();
 
   /** Text area element reference */
   readonly textAreaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textArea');
+
+  /**
+   * Whether the text area currently holds keyboard focus. Driven by `(focus)`/`(blur)`
+   * and read by the render effect, so a focus change schedules exactly one pass that
+   * re-evaluates both guards below (R5.1, R5.4, R5.8).
+   */
+  readonly focused = signal(false);
+
+  /**
+   * The text this component last wrote into the element — what the removed `[value]`
+   * binding used to remember. Comparing against it keeps the write change-detection
+   * shaped: an inbound text that is already applied is not re-written, so locally typed
+   * but not yet echoed text survives the blur pass (R5.4, R5.6).
+   */
+  private lastAppliedText: string | null = null;
 
   /** UI state signals */
   readonly showComments = signal(false);
@@ -445,6 +562,37 @@ export class RetroCardComponent {
 
   /** Common emojis for quick insertion */
   readonly commonEmojis = ['👍', '👎', '❤️', '🎉', '🤔', '😊', '🔥', '⭐', '✅', '❌', '💡', '🚀'];
+
+  /**
+   * Bumped whenever something other than `card().text` invalidates the measurement —
+   * the text area width changing, or the user typing uncommitted text (R6.7). The
+   * render effect tracks it, so a bump schedules exactly one re-measure.
+   */
+  private readonly measurementRevision = signal(0);
+
+  /** Last geometry read off the rendered text area. */
+  private readonly textAreaGeometry = signal<TextAreaGeometry>(UNMEASURED_GEOMETRY, {
+    equal: geometryEquals,
+  });
+
+  /** Fluid unless the received configuration explicitly says otherwise (R6.3, R13.11). */
+  readonly fluidCardHeight = computed(() =>
+    resolveFluidCardHeight(this.retroState.config()?.fluidCardHeight)
+  );
+
+  /**
+   * Applied text area height: `clamp(lines) × lineHeight + padding`, where the clamp is
+   * `(3, 12)` when fluid and `(4, 4)` when not (R6.4, R6.5, R6.6). Independent of the
+   * column layout — only `availableWidthPx` differs between layouts (R6.14).
+   */
+  readonly textAreaHeightPx = computed(() => {
+    const geometry = this.textAreaGeometry();
+    return computeTextAreaHeightPx(geometry.lineCount, {
+      lineHeightPx: geometry.lineHeightPx,
+      verticalPaddingPx: geometry.verticalPaddingPx,
+      fluid: this.fluidCardHeight(),
+    });
+  });
 
   constructor() {
     afterNextRender(() => {
@@ -458,7 +606,134 @@ export class RetroCardComponent {
         }
         this.retroState.lastAddedOwnCardId.set(null);
       }
+
+      this.observeTextAreaWidth();
     });
+
+    // Tracks the text, the fluid mode, the focus flag and the revision counter, so each
+    // of them schedules exactly one pass. The line count itself comes from the rendered
+    // element rather than being predicted (R6.7).
+    afterRenderEffect(() => {
+      const text = this.card().text;
+      const fluid = this.fluidCardHeight();
+      const focused = this.focused();
+      this.measurementRevision();
+
+      // The inbound text lands before the measurement so the height describes what is
+      // actually in the element; while focused the element is left entirely alone.
+      if (!focused) {
+        this.applyIncomingText(text);
+      }
+      this.measureTextArea(text, fluid);
+      if (!focused) {
+        this.pinScrollToTop();
+      }
+    });
+  }
+
+  /**
+   * Writes an inbound text into the unfocused element. Skipped when the same text is
+   * already applied, which is what preserves text the user typed and committed but that
+   * the server has not echoed back yet.
+   */
+  private applyIncomingText(text: string): void {
+    const el = this.textAreaRef()?.nativeElement;
+    if (!el || this.lastAppliedText === text) {
+      return;
+    }
+    this.lastAppliedText = text;
+    if (el.value !== text) {
+      el.value = text;
+    }
+  }
+
+  /**
+   * Pins the first line of an unfocused text area to the top of its box, on first
+   * render and after every inbound update, whether the text overflows or not
+   * (R5.1, R5.2, R5.3, R5.10). The text itself is untouched by the reset.
+   */
+  private pinScrollToTop(): void {
+    const el = this.textAreaRef()?.nativeElement;
+    if (el && el.scrollTop !== 0) {
+      el.scrollTop = 0;
+    }
+  }
+
+  /**
+   * Re-measures when the text area's content width changes — a column layout switch, a
+   * window resize or a scrollbar appearing (R6.7, R6.14). Height changes are ignored on
+   * purpose: the applied height is itself an output of the measurement, so reacting to
+   * it would feed back into this observer.
+   */
+  private observeTextAreaWidth(): void {
+    const el = this.textAreaRef()?.nativeElement;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    let lastWidthPx = -1;
+    const observer = new ResizeObserver(entries => {
+      const widthPx = entries[0]?.contentRect.width ?? 0;
+      if (widthPx === lastWidthPx) {
+        return;
+      }
+      lastWidthPx = widthPx;
+      this.measurementRevision.update(revision => revision + 1);
+    });
+    observer.observe(el);
+    this.destroyRef.onDestroy(() => observer.disconnect());
+  }
+
+  /**
+   * Reads the rendered line count and feeds it to the shared clamp.
+   *
+   * The element is collapsed to a zero content box for the read so `scrollHeight`
+   * reports the height the text actually occupies instead of the height already
+   * applied — otherwise a card could only ever grow. The read and the restore happen in
+   * the same task, so nothing is painted at the intermediate height. Where the
+   * environment performs no layout (`scrollHeight === 0`), the DOM-free greedy wrap
+   * stands in.
+   */
+  private measureTextArea(text: string, fluid: boolean): void {
+    const el = this.textAreaRef()?.nativeElement;
+    if (!el) {
+      return;
+    }
+
+    const style = getComputedStyle(el);
+    const fontSizePx = parseComputedPx(style.fontSize);
+    const lineHeightPx = parseComputedPx(style.lineHeight);
+    const verticalPaddingPx =
+      orZero(parseComputedPx(style.paddingTop)) + orZero(parseComputedPx(style.paddingBottom));
+
+    const inlinePaddingPx =
+      orZero(parseComputedPx(style.paddingLeft)) + orZero(parseComputedPx(style.paddingRight));
+    const contentWidthPx = el.clientWidth - inlinePaddingPx;
+    const availableWidthPx = contentWidthPx > 0 ? contentWidthPx : FALLBACK_AVAILABLE_WIDTH_PX;
+
+    const appliedHeight = el.style.height;
+    el.style.height = '0px';
+    const contentHeightPx = el.scrollHeight;
+    el.style.height = appliedHeight;
+
+    const lineCount =
+      contentHeightPx > 0 && lineHeightPx > 0
+        ? (contentHeightPx - verticalPaddingPx) / lineHeightPx
+        : measureLineCount(text, {
+            availableWidthPx,
+            charWidthPx: fontSizePx * AVERAGE_CHAR_WIDTH_RATIO,
+          });
+
+    // Apply straight away so the measured height is the one that gets painted; the
+    // `[style.height.px]` binding writes the same value on the next change pass.
+    const heightPx = computeTextAreaHeightPx(lineCount, {
+      lineHeightPx,
+      verticalPaddingPx,
+      fluid,
+    });
+    el.style.height = `${heightPx}px`;
+
+    this.textAreaGeometry.set({ lineCount, lineHeightPx, verticalPaddingPx });
   }
 
   /** Computed: whether board is completed */
@@ -504,10 +779,31 @@ export class RetroCardComponent {
 
   // --- Text editing ---
 
+  /**
+   * Uncommitted typing does not change `card().text`, so the height is re-measured from
+   * the revision counter instead (R6.7).
+   */
+  onTextInput(): void {
+    this.measurementRevision.update(revision => revision + 1);
+  }
+
+  onTextFocus(): void {
+    this.focused.set(true);
+  }
+
+  /**
+   * Clears the focus flag and resets the scroll offset in the same turn as the focus
+   * loss, without touching the text (R5.4), then keeps the existing "send an edit when
+   * the text differs from the one last received" behaviour (R5.6).
+   */
   onTextBlur(event: FocusEvent): void {
     const target = event.target as HTMLTextAreaElement;
     const newText = target.value;
     const cardData = this.card();
+
+    this.focused.set(false);
+    target.scrollTop = 0;
+
     if (newText !== cardData.text) {
       this.ws.sendCardEdit(cardData.id, newText);
     }
@@ -589,6 +885,8 @@ export class RetroCardComponent {
       textAreaEl.value = newValue;
       textAreaEl.selectionStart = textAreaEl.selectionEnd = start + emoji.length;
       textAreaEl.focus();
+      // A direct value write fires no `input` event, so invalidate the measurement here.
+      this.onTextInput();
     }
     this.showEmojiPicker.set(false);
   }

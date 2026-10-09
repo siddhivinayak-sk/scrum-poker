@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validateToken } from '../services/auth-service';
 import { sessionRegistry } from '../services/session-registry';
 import { DEFAULT_SESSION_CONFIG } from '../../../shared/types';
+import { buildEstimateExportCsv } from '../../../shared/estimate-export';
 import { broadcastConfigUpdate } from '../websocket/handler';
 
 export const sessionsRouter = Router();
@@ -83,6 +84,56 @@ sessionsRouter.get('/:sessionId/exists', (req: Request, res: Response) => {
   const sessionId = req.params.sessionId as string;
   const exists = sessionRegistry.hasSession(sessionId);
   res.status(200).json({ exists });
+});
+
+/**
+ * GET /api/sessions/:sessionId/export
+ * Export every completed estimate of the session as an RFC 4180 CSV document.
+ *
+ * Check order is auth (401) -> existence (404) -> ownership (403) so that a
+ * caller without a valid token learns nothing about which sessions exist.
+ *
+ * The handler is a pure read: it only calls `getHistory()` and reads
+ * `config.votingSystem`, so two consecutive requests return identical content.
+ *
+ * NOTE: This route is registered before /:sessionId to prevent
+ * "export" from being captured as part of a sessionId parameter.
+ */
+sessionsRouter.get('/:sessionId/export', (req: Request, res: Response) => {
+  const user = authenticateRequest(req);
+  if (!user) {
+    res.status(401).json({ error: 'UNAUTHORIZED' });
+    return;
+  }
+
+  const sessionId = req.params.sessionId as string;
+  const session = sessionRegistry.getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: 'SESSION_NOT_FOUND' });
+    return;
+  }
+
+  // Only the session owner can export the estimates
+  if (session.ownerId !== user.id) {
+    res.status(403).json({ error: 'FORBIDDEN' });
+    return;
+  }
+
+  const csv = buildEstimateExportCsv({
+    history: session.getHistory(),
+    votingSystem: session.config.votingSystem,
+  });
+
+  // The filename is taken from the stored session id rather than the raw path
+  // parameter, so no caller-supplied text can reach a response header.
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="scrum-poker-${session.sessionId}.csv"`
+  );
+  // Sent as a UTF-8 buffer: Express appends a charset to the Content-Type only
+  // for string bodies, and the header is specified as exactly `text/csv`.
+  res.status(200).send(Buffer.from(csv, 'utf-8'));
 });
 
 /**

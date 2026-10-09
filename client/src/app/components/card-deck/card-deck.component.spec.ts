@@ -368,7 +368,7 @@ describe('CardDeckComponent', () => {
       expect(selectedButtons[0].getAttribute('aria-label')).toBe('Estimate 13 points');
     });
 
-    // Note: The actual CSS transform (translateY(-20px) scale(1.05)) and transition
+    // Note: The actual CSS transform (translateY(-10px) scale(1.04)) and transition
     // (300ms ease-out) are defined in the component's styles block. These CSS-only
     // properties cannot be reliably tested in a JSDOM environment because JSDOM does
     // not compute CSS styles. The class application above confirms the correct CSS

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { IssueItem } from '@shared/types';
+import { issueTitleAccessibleName, issueTitleText } from './issue-title';
 
 @Component({
   selector: 'app-issue-list-panel',
@@ -85,29 +86,36 @@ import { IssueItem } from '@shared/types';
                 ○
               }
             </span>
-            <span class="issue-list-panel__item-title" [title]="issue.title">{{ issue.title }}</span>
-            @if (canManage() && issue.status === 'pending') {
-              <button
-                class="issue-list-panel__select-btn"
-                (click)="selectIssue(issue.id)"
-                type="button"
-                [attr.aria-label]="'Estimate ' + issue.title"
-                title="Estimate this issue"
-              >
-                Estimate
-              </button>
-            }
-            @if (canManage() && issue.status === 'estimating' && !isActiveIssue(issue)) {
-              <button
-                class="issue-list-panel__select-btn issue-list-panel__select-btn--resume"
-                (click)="selectIssue(issue.id)"
-                type="button"
-                [attr.aria-label]="'Resume ' + issue.title"
-                title="Resume estimation for this issue"
-              >
-                Resume
-              </button>
-            }
+            <span
+              class="issue-list-panel__item-title"
+              [title]="titleAccessibleName(issue)"
+              [attr.aria-label]="titleAccessibleName(issue)"
+              >{{ titleText(issue) }}</span
+            >
+            <span class="issue-list-panel__item-action">
+              @if (canManage() && issue.status === 'pending') {
+                <button
+                  class="issue-list-panel__select-btn"
+                  (click)="selectIssue(issue.id)"
+                  type="button"
+                  [attr.aria-label]="'Estimate ' + issue.title"
+                  title="Estimate this issue"
+                >
+                  Estimate
+                </button>
+              }
+              @if (canManage() && issue.status === 'estimating' && !isActiveIssue(issue)) {
+                <button
+                  class="issue-list-panel__select-btn issue-list-panel__select-btn--resume"
+                  (click)="selectIssue(issue.id)"
+                  type="button"
+                  [attr.aria-label]="'Resume ' + issue.title"
+                  title="Resume estimation for this issue"
+                >
+                  Resume
+                </button>
+              }
+            </span>
           </li>
         }
       </ul>
@@ -200,7 +208,7 @@ import { IssueItem } from '@shared/types';
 
       .issue-list-panel__item {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 0.5rem;
         padding: 0.375rem 0.25rem;
         border-bottom: 1px solid #f0f0f0;
@@ -219,19 +227,34 @@ import { IssueItem } from '@shared/types';
       .issue-list-panel__item-status {
         font-size: 0.8rem;
         min-width: 1rem;
+        flex: 0 0 auto;
         text-align: center;
       }
 
+      /* Two-line clamp: the title shrinks below its content width and breaks
+         inside a word, so a row never widens the panel (R2.1, R2.5, R2.8). */
       .issue-list-panel__item-title {
-        flex: 1;
-        font-size: 0.85rem;
+        flex: 1 1 auto;
+        min-width: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        word-break: break-word;
+        overflow-wrap: anywhere;
+        font-size: 0.8125rem;
+        line-height: 1.35;
+      }
+
+      /* Fixed-width slot, always rendered, so every row's action shares one
+         left edge and the title takes the remainder (R2.11, R2.13). */
+      .issue-list-panel__item-action {
+        flex: 0 0 5.5rem;
+        display: flex;
+        justify-content: flex-end;
       }
 
       .issue-list-panel__select-btn {
+        width: 100%;
         padding: 0.2rem 0.5rem;
         border: 1px solid #1976d2;
         border-radius: 4px;
@@ -268,6 +291,16 @@ export class IssueListPanelComponent {
   readonly showBulkImport = signal(false);
 
   private dragIndex: number | null = null;
+
+  /** Visible title text: the stored value, or the placeholder when blank (R2.10). */
+  titleText(issue: IssueItem): string {
+    return issueTitleText(issue.title);
+  }
+
+  /** Complete stored title, used as both `title` and `aria-label` (R2.2, R2.9). */
+  titleAccessibleName(issue: IssueItem): string {
+    return issueTitleAccessibleName(issue.title);
+  }
 
   toggleBulkImport(): void {
     this.showBulkImport.update((v) => !v);

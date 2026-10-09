@@ -1,0 +1,1699 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Extend `shared/types.ts` with the additive types and constants": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465357853
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465384018
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465838175
+      }
+    ],
+    "1.2 **Property test** — Property 10: fluidCardHeight default resolution": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358005
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466101601
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466485801
+      }
+    ],
+    "2.1 Create `shared/csv.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358090
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465389912
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465844566
+      }
+    ],
+    "2.2 **Property test** — Property 1: CSV field quoting round trip": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358185
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466108452
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466493610
+      }
+    ],
+    "2.3 Write example unit tests in `shared/__tests__/csv.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358268
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466533505
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466865176
+      }
+    ],
+    "3.1 Create `shared/estimate-export.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358348
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466095040
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466500029
+      }
+    ],
+    "3.2 **Property tests** — Properties 2, 3, 4 and 24": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358449
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466891803
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467895854
+      }
+    ],
+    "3.3 Write example unit tests in `shared/__tests__/estimate-export.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358556
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466898472
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467903147
+      }
+    ],
+    "4.1 Create `client/src/app/components/card-deck/card-deck-geometry.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358663
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465395912
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465850833
+      }
+    ],
+    "4.2 **Property test** — Property 6: selected card stays inside the deck container": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358751
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466115143
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466506454
+      }
+    ],
+    "5.1 Create `client/src/app/components/issue-list-panel/issue-title.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358834
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465402334
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465857099
+      }
+    ],
+    "5.2 **Property test** — Property 5: issue row never overflows its panel": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358914
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466121678
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466513005
+      }
+    ],
+    "6.1 Create `client/src/app/services/retro-card-height.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465358986
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465408423
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465863200
+      }
+    ],
+    "6.2 **Property tests** — Properties 7, 8 and 9": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359064
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466540274
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466871628
+      }
+    ],
+    "7.1 Create `client/src/app/components/retro-board/drop-index.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359138
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465878741
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466081532
+      }
+    ],
+    "7.2 **Property test** — Property 11: drop index from bounding-box midpoints": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359221
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466546744
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466878080
+      }
+    ],
+    "8.1 Create `client/src/app/services/connection-episode.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359318
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465885376
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466087784
+      }
+    ],
+    "8.2 **Property tests** — Properties 18 and 19": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359415
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466553301
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466884428
+      }
+    ],
+    "9. Checkpoint — pure units complete": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359523
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791515036495
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791515797294
+      }
+    ],
+    "10.1 Add `GET /:sessionId/export` to `server/src/routes/sessions.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359609
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466905223
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467910198
+      }
+    ],
+    "10.2 Write `server/src/routes/__tests__/sessions-export.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359698
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467941305
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468970969
+      }
+    ],
+    "11.1 Extend `server/src/services/retro-session.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359781
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466911982
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467916935
+      }
+    ],
+    "11.2 Write `server/src/services/__tests__/retro-session-fluid-height.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359868
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467948184
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468978165
+      }
+    ],
+    "11.3 Add `getSessionsByOwner` to `server/src/services/retro-session-registry.ts` and `summariseRetroSessions` to `server/src/routes/retro-routes.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465359955
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467955486
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468985105
+      }
+    ],
+    "11.4 Add `GET /sessions/mine` to `server/src/routes/retro-routes.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360047
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469198234
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470100105
+      }
+    ],
+    "11.5 **Property test** — Property 20: retro session list holds exactly the caller's retro sessions": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360138
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470135296
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470698004
+      }
+    ],
+    "12.1 Add `endRetroSession` and unknown-session closing to `server/src/websocket/retro-handler.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360233
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469012808
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469191389
+      }
+    ],
+    "12.2 Add `DELETE /sessions/:sessionId` to `server/src/routes/retro-routes.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360365
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470142668
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470705726
+      }
+    ],
+    "12.3 **Property test** — Property 21: ending a retro session touches nothing else": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360447
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471701647
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472192233
+      }
+    ],
+    "12.4 **Property test** — Property 22: late retro WebSocket messages change nothing": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360550
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469205074
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470107001
+      }
+    ],
+    "13.1 Create `server/src/websocket/liveness.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360653
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466918619
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467924287
+      }
+    ],
+    "13.2 Wire the poker liveness probe": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360747
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469211899
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470113713
+      }
+    ],
+    "13.3 Wire the retro liveness probe independently": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360858
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470149271
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470715257
+      }
+    ],
+    "13.4 Write `server/src/websocket/__tests__/liveness.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465360968
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471708745
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472200061
+      }
+    ],
+    "14. Checkpoint — server work complete": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361072
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791515803633
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791516095525
+      }
+    ],
+    "15.1 Create `client/src/app/services/estimate-export.service.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361156
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467962355
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468991872
+      }
+    ],
+    "15.2 Add an `ownerId` Signal to `client/src/app/services/session-state.service.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361239
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467969645
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468999138
+      }
+    ],
+    "15.3 Add the export control to `SessionPokerPageComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361329
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471715985
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472207376
+      }
+    ],
+    "15.4 Write `client/src/app/services/estimate-export.service.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361421
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473815592
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474551857
+      }
+    ],
+    "15.5 Write `client/src/app/components/session-poker-page/export-control.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361531
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473831063
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474559407
+      }
+    ],
+    "16.1 Modify `IssueListPanelComponent` template and styles": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361617
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469220167
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470120466
+      }
+    ],
+    "16.2 Write `client/src/app/components/issue-list-panel/issue-list-panel.layout.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361717
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470156009
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470722641
+      }
+    ],
+    "17.1 Modify `CardDeckComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361824
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791469226774
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470127867
+      }
+    ],
+    "17.2 Write `client/src/app/components/card-deck/card-deck.containment.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465361931
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470162706
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470730171
+      }
+    ],
+    "18.1 Bind the card text area height in `RetroCardComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362024
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470751380
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471694005
+      }
+    ],
+    "18.2 Implement the focus-aware scroll and value handling in `RetroCardComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362105
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471731490
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472214953
+      }
+    ],
+    "18.3 **Property tests** — Properties 14 and 15": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362204
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473842056
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474568321
+      }
+    ],
+    "18.4 Write `client/src/app/components/retro-board/retro-card.sizing.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362392
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474594537
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475111369
+      }
+    ],
+    "18.5 Add the `fluidCardHeight` toggle to the retro board settings dialog": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362487
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472230470
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473792332
+      }
+    ],
+    "18.6 Write `client/src/app/components/retro-board/fluid-height-settings.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362583
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474602369
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475122636
+      }
+    ],
+    "18.7 Delegate `RetroColumnComponent` drag handling to `drop-index.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362686
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472237845
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473799662
+      }
+    ],
+    "18.8 Write `client/src/app/components/retro-board/retro-column.dnd.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362817
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473855356
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474576892
+      }
+    ],
+    "19. Checkpoint — retro card and poker surfaces complete": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465362923
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791515810863
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791516101626
+      }
+    ],
+    "20.1 Create `client/src/app/services/retro-capture-mode.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363014
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472245359
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473807158
+      }
+    ],
+    "20.2 Rework `RetroScreenshotService.captureBoard`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363098
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791473863131
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474584763
+      }
+    ],
+    "20.3 **Property tests** — Properties 12 and 13": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363183
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475154783
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476176098
+      }
+    ],
+    "20.4 Write `client/src/app/services/retro-screenshot.service.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363268
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475162539
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476184048
+      }
+    ],
+    "21.1 Create `client/src/app/testing/contrast.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363351
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791471738750
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472222214
+      }
+    ],
+    "21.2 Apply the layout and token edits to `RetroBoardPageComponent` styles": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363439
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475170312
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476199560
+      }
+    ],
+    "21.3 Apply the layout and token edits to `RetroColumnComponent` styles": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363536
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474610352
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475131360
+      }
+    ],
+    "21.4 Apply the layout and token edits to `RetroCardComponent` styles": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363632
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475180497
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476207783
+      }
+    ],
+    "21.5 Compact `RetroToolbarComponent` and the embedded feelings strip": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363732
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476225681
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477201284
+      }
+    ],
+    "21.6 **Property test** — Property 27: declared style invariants of the retro surfaces": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363827
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508172112
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509290011
+      }
+    ],
+    "21.7 Write `client/src/app/components/retro-board/retro-layout.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363914
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477262829
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508136644
+      }
+    ],
+    "21.8 Write `client/src/app/components/retro-board/retro-toolbar.compact.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465363998
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508179667
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509297400
+      }
+    ],
+    "22.1 Create `RetroResumeListComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364084
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474623955
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475139197
+      }
+    ],
+    "22.2 Add the two optional inputs to `UserMenuComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364167
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474631723
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475146603
+      }
+    ],
+    "22.3 Add the lobby header and wire both lists in `LobbyComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364264
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476235173
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477227729
+      }
+    ],
+    "22.4 **Property test** — Property 26: retro session list entries render and navigate": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364442
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476246927
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477236565
+      }
+    ],
+    "22.5 Write `client/src/app/components/retro-resume-list/retro-resume-list.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364541
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477270603
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508143517
+      }
+    ],
+    "22.6 **Property test** — Property 25: lobby user control structure and avatar initial": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364636
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476258252
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477244308
+      }
+    ],
+    "22.7 Write `client/src/app/components/lobby/lobby-user-menu.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364722
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477278284
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508149612
+      }
+    ],
+    "23.1 Add the end-session control and confirmation dialog to `RetroBoardPageComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364814
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508185368
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509305553
+      }
+    ],
+    "23.2 Handle `retro:session:ended` inside `RetroWebSocketService`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364901
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509321593
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511261623
+      }
+    ],
+    "23.3 Write `client/src/app/components/retro-board/end-session.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465364989
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511293574
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511876145
+      }
+    ],
+    "24.1 Extend `ToastService`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365088
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475187992
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476215285
+      }
+    ],
+    "24.2 Create `ConnectionStatusComponent` and the status tokens": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365170
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477286300
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508156985
+      }
+    ],
+    "24.3 Route `WebSocketService` decisions through the episode reducer": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365256
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791477294048
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508164374
+      }
+    ],
+    "24.4 Route `RetroWebSocketService` decisions through the same reducer": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365347
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511884294
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513884566
+      }
+    ],
+    "24.5 Add the indicator and the interaction blocker to `SessionPokerPageComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365434
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509328392
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511269972
+      }
+    ],
+    "24.6 Add the indicator and the interaction blocker to `RetroBoardPageComponent`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365523
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511892536
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513893024
+      }
+    ],
+    "24.7 **Property test** — Property 16: indicator maps state to colour and label totally": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365615
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509337786
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511279260
+      }
+    ],
+    "24.8 **Property test** — Property 17: interaction is permitted exactly when connected": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365701
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513918787
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791521948476
+      }
+    ],
+    "24.9 Write `client/src/app/services/websocket.service.connection.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365791
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511899978
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513901331
+      }
+    ],
+    "24.10 Write `client/src/app/services/retro-websocket.service.connection.spec.ts`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365891
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513926799
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791521953672
+      }
+    ],
+    "24.11 Update the two existing WebSocket service specs for the documented R13.18 exception": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465365992
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513934867
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791521959881
+      }
+    ],
+    "25.1 **Property test** — Property 28: pre-existing names and routes survive": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465366072
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511907818
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791513909908
+      }
+    ],
+    "25.2 Write the verification coverage ledger `docs/verification-coverage.md`": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465366156
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791516112503
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791517577991
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791519551606
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791519886843
+      }
+    ],
+    "25.3 Run the full suites and fix every regression": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465366255
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791517585753
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791519543346
+      }
+    ],
+    "26. Final checkpoint": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791465366390
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791519892012
+      },
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791521917003
+      }
+    ],
+    "1. Shared type and constant foundation": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466486003
+      }
+    ],
+    "4. Pure card deck geometry module (Stream 3)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466506551
+      }
+    ],
+    "5. Pure issue title module (Stream 2)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466513219
+      }
+    ],
+    "2. Pure CSV module (Stream 1)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466865298
+      }
+    ],
+    "6. Pure retro card height module (Stream 4)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466871755
+      }
+    ],
+    "7. Pure drop index module (Stream 4)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466878160
+      }
+    ],
+    "8. Pure connection episode reducer (Stream 9)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791466884522
+      }
+    ],
+    "3. Pure estimate export module (Stream 1)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791467903235
+      }
+    ],
+    "10. Server: estimate export endpoint (Stream 1)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791468971073
+      }
+    ],
+    "11. Server: retro session state and session listing (Streams 4, 7)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470698201
+      }
+    ],
+    "16. Client: readable issue titles (Stream 2)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470722753
+      }
+    ],
+    "17. Client: contained card selection elevation (Stream 3)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791470730281
+      }
+    ],
+    "12. Server: end retro session (Stream 8)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472192385
+      }
+    ],
+    "13. Server: WebSocket liveness probe (Stream 9)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791472200164
+      }
+    ],
+    "15. Client: poker estimate export (Stream 1)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791474559528
+      }
+    ],
+    "18. Client: retro card sizing, text behaviour and drag index (Stream 4)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791475122767
+      }
+    ],
+    "20. Client: screenshot capture fidelity (Stream 5)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791476184196
+      }
+    ],
+    "22. Client: retro sessions on the lobby and the lobby user control (Stream 7)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791508149726
+      }
+    ],
+    "21. Client: retro board layout and compact toolbar (Streams 6, 10 support)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791509297858
+      }
+    ],
+    "23. Client: end retro session from the board (Stream 8)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791511876385
+      }
+    ],
+    "25. No-regression verification and coverage ledger (Stream 10)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791519543510
+      }
+    ],
+    "24. Client: connection status indicator and interaction blocking (Stream 9)": [
+      {
+        "executionId": "4c1b24e6-bcee-4e0c-b9c0-80258ff99bad",
+        "chatSessionId": "sess_4d6a33a1-089e-458e-86fc-3fbc18447792",
+        "timestamp": 1791521960034
+      }
+    ]
+  }
+}

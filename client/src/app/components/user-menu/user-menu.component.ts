@@ -2,6 +2,7 @@ import {
   Component,
   inject,
   computed,
+  input,
   signal,
   ElementRef,
   HostListener,
@@ -10,16 +11,27 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { User } from '@shared/types';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
 import { toggleRole } from '../profile/profile.component';
 
 /**
- * Pure function: extract the first letter of a display name, uppercased.
+ * Pure function: extract the avatar initial from a display name.
+ *
+ * Returns the uppercased form of the first non-whitespace character of the
+ * display name, iterating by code point so that astral characters (emoji)
+ * survive intact. Returns `''` when the name holds no non-whitespace
+ * character.
  */
 export function getAvatarLetter(displayName: string): string {
-  return displayName.charAt(0).toUpperCase();
+  for (const char of displayName) {
+    if (!/\s/u.test(char)) {
+      return char.toUpperCase();
+    }
+  }
+  return '';
 }
 
 @Component({
@@ -27,12 +39,12 @@ export function getAvatarLetter(displayName: string): string {
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (currentUser(); as user) {
+    @if (effectiveUser(); as menuUser) {
       <div class="user-menu">
         <button
           #avatarButton
           class="user-menu__avatar"
-          [attr.aria-label]="'User menu for ' + user.displayName"
+          [attr.aria-label]="'User menu for ' + menuUser.displayName"
           [attr.aria-expanded]="menuOpen()"
           aria-haspopup="true"
           (click)="toggleMenu()"
@@ -49,29 +61,33 @@ export function getAvatarLetter(displayName: string): string {
             #dropdownMenu
           >
             <div class="user-menu__info" role="none">
-              <span class="user-menu__name">{{ user.displayName }}</span>
-              <span class="user-menu__role">{{ user.role }}</span>
+              <span class="user-menu__name" [title]="menuUser.displayName">{{
+                menuUser.displayName
+              }}</span>
+              <span class="user-menu__role">{{ menuUser.role }}</span>
             </div>
 
-            <button
-              class="user-menu__item"
-              role="menuitem"
-              [attr.aria-label]="'Switch to ' + nextRole() + ' role'"
-              [attr.tabindex]="focusedIndex() === 0 ? 0 : -1"
-              (click)="switchRole()"
-              (keydown)="onMenuItemKeydown($event, 0)"
-              #menuItem
-            >
-              Switch to {{ nextRole() }}
-            </button>
+            @if (showRoleSwitch()) {
+              <button
+                class="user-menu__item"
+                role="menuitem"
+                [attr.aria-label]="'Switch to ' + nextRole() + ' role'"
+                [attr.tabindex]="focusedIndex() === 0 ? 0 : -1"
+                (click)="switchRole()"
+                (keydown)="onMenuItemKeydown($event, 0)"
+                #menuItem
+              >
+                Switch to {{ nextRole() }}
+              </button>
+            }
 
             <button
               class="user-menu__item user-menu__item--logout"
               role="menuitem"
               aria-label="Logout"
-              [attr.tabindex]="focusedIndex() === 1 ? 0 : -1"
+              [attr.tabindex]="focusedIndex() === logoutIndex() ? 0 : -1"
               (click)="logout()"
-              (keydown)="onMenuItemKeydown($event, 1)"
+              (keydown)="onMenuItemKeydown($event, logoutIndex())"
               #menuItem
             >
               Logout
@@ -122,6 +138,7 @@ export function getAvatarLetter(displayName: string): string {
         top: calc(100% + 8px);
         right: 0;
         min-width: 200px;
+        max-width: 280px;
         background: #ffffff;
         border-radius: 8px;
         box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.2));
@@ -141,6 +158,9 @@ export function getAvatarLetter(displayName: string): string {
         font-weight: 600;
         font-size: 0.9rem;
         color: var(--text-primary, #1a1a2e);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .user-menu__role {
@@ -194,20 +214,36 @@ export class UserMenuComponent implements AfterViewInit {
 
   @ViewChild('avatarButton') avatarButtonRef!: ElementRef<HTMLButtonElement>;
 
+  /**
+   * Host-supplied user. When `null` (the default) the component falls back to
+   * the poker session's current user, so existing call sites are unaffected.
+   */
+  readonly user = input<User | null>(null);
+
+  /** Whether the role-switch menu item is rendered. Defaults to `true`. */
+  readonly showRoleSwitch = input<boolean>(true);
+
   readonly currentUser = this.sessionState.currentUser;
+
+  /** The user the menu renders: the input when supplied, otherwise session state. */
+  readonly effectiveUser = computed(() => this.user() ?? this.currentUser());
+
   readonly menuOpen = signal(false);
   readonly focusedIndex = signal(0);
 
-  private readonly MENU_ITEM_COUNT = 2;
+  private readonly MENU_ITEM_COUNT = computed(() => (this.showRoleSwitch() ? 2 : 1));
+
+  /** Index of the logout item, which is last in the menu. */
+  readonly logoutIndex = computed(() => this.MENU_ITEM_COUNT() - 1);
 
   readonly avatarLetter = computed(() => {
-    const user = this.currentUser();
+    const user = this.effectiveUser();
     if (!user) return '';
     return getAvatarLetter(user.displayName);
   });
 
   readonly nextRole = computed(() => {
-    const user = this.currentUser();
+    const user = this.effectiveUser();
     if (!user) return 'moderator';
     return toggleRole(user.role);
   });
@@ -233,7 +269,7 @@ export class UserMenuComponent implements AfterViewInit {
   }
 
   switchRole(): void {
-    const user = this.currentUser();
+    const user = this.effectiveUser();
     if (!user) return;
     const newRole = toggleRole(user.role);
     this.wsService.send('role:change', { role: newRole });
@@ -281,7 +317,7 @@ export class UserMenuComponent implements AfterViewInit {
         break;
       case 'End':
         event.preventDefault();
-        this.moveFocus(this.MENU_ITEM_COUNT - 1);
+        this.moveFocus(this.MENU_ITEM_COUNT() - 1);
         break;
     }
   }
@@ -302,7 +338,7 @@ export class UserMenuComponent implements AfterViewInit {
   }
 
   private moveFocus(index: number): void {
-    const clamped = Math.max(0, Math.min(index, this.MENU_ITEM_COUNT - 1));
+    const clamped = Math.max(0, Math.min(index, this.MENU_ITEM_COUNT() - 1));
     this.focusedIndex.set(clamped);
     this.focusMenuItem(clamped);
   }

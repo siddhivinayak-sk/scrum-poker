@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { ALL_CARDS, CardValue, FIBONACCI_SEQUENCE, NumericCardValue } from '@shared/types';
 import { CARD_COLOR_MAP, SPECIAL_CARD_COLOR_MAP, getCardColor } from './card-deck.component';
+import {
+  WCAG_AA_TEXT_CONTRAST,
+  mixWithWhite,
+  wcagContrastRatio,
+} from '../../testing/contrast';
 
 /**
  * Build a color index mapping: each CSS custom property color maps to its
@@ -85,56 +90,6 @@ const TEXT_COLOR_HEX = '#1a1a2e';
 type CardVisualState = 'unselected' | 'selected' | 'hovered' | 'disabled';
 
 /**
- * Parse a hex color string (#RRGGBB) into [R, G, B] in the 0-1 range.
- */
-function hexToSrgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return [r, g, b];
-}
-
-/**
- * Linearize an sRGB channel value per WCAG 2.1.
- */
-function linearize(c: number): number {
-  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-
-/**
- * Compute relative luminance per WCAG 2.1.
- */
-function relativeLuminance(hex: string): number {
-  const [r, g, b] = hexToSrgb(hex);
-  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
-}
-
-/**
- * Compute WCAG 2.1 contrast ratio between two hex colors.
- * Returns a value >= 1 (lighter / darker).
- */
-function contrastRatio(hex1: string, hex2: string): number {
-  const l1 = relativeLuminance(hex1);
-  const l2 = relativeLuminance(hex2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-/**
- * Mix an accent color with white at a given percentage (0-1).
- * result = accent * pct + white * (1 - pct)
- * Returns a hex string.
- */
-function mixWithWhite(accentHex: string, pct: number): string {
-  const [ar, ag, ab] = hexToSrgb(accentHex);
-  const r = Math.round((ar * pct + 1 * (1 - pct)) * 255);
-  const g = Math.round((ag * pct + 1 * (1 - pct)) * 255);
-  const b = Math.round((ab * pct + 1 * (1 - pct)) * 255);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-/**
  * Compute the effective background color for a card given its accent hex
  * and visual state.
  *
@@ -184,10 +139,10 @@ describe('Property 17: Card text-background contrast ratio', () => {
           expect(accentHex).toBeDefined();
 
           const bgHex = effectiveBackground(accentHex, state);
-          const ratio = contrastRatio(TEXT_COLOR_HEX, bgHex);
+          const ratio = wcagContrastRatio(TEXT_COLOR_HEX, bgHex);
 
           // WCAG 2.1 Level AA requires >= 4.5:1 for normal text
-          expect(ratio).toBeGreaterThanOrEqual(4.5);
+          expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_TEXT_CONTRAST);
         },
       ),
       { numRuns: 200 },

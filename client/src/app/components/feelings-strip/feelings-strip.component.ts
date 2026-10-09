@@ -49,20 +49,32 @@ import { FeelingsSummaryPopupComponent } from '../feelings-summary-popup/feeling
     }
   `,
   styles: [`
+    /* Sits as a non-stretching item in the retro toolbar row (R10.10) */
+    :host {
+      display: inline-flex;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    /* 32px block size so the strip fits a single 40px toolbar row (R10.4, R10.10).
+       --card-color-5 (#d69e2e) is the token nearest the strip's golden accent. */
     .feelings-strip {
       display: inline-flex;
       align-items: center;
-      gap: 0.375rem;
-      padding: 0.125rem 0.5rem;
-      border: 1.5px solid #d4a017;
+      gap: 4px;
+      height: 32px;
+      padding: 0 4px;
+      box-sizing: border-box;
+      border: 1px solid var(--card-color-5);
       border-radius: 6px;
-      background: #fffef5;
+      background: var(--surface-card-deck);
     }
 
     .feelings-strip__label {
+      /* 12px floor on --surface-card-deck for >= 4.5:1 (R10.6) */
       font-size: 0.75rem;
       font-weight: 600;
-      color: #8b6914;
+      color: var(--text-primary);
       white-space: nowrap;
       user-select: none;
     }
@@ -70,17 +82,21 @@ import { FeelingsSummaryPopupComponent } from '../feelings-summary-popup/feeling
     .feelings-strip__emojis {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 4px;
     }
 
     .feelings-strip__emoji-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 26px;
-      height: 26px;
+      /* 32x32 minimum pointer target (R10.3) */
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
+      flex: 0 0 auto;
       padding: 0;
-      border: 1.5px solid transparent;
+      border: 1px solid transparent;
       border-radius: 4px;
       background: transparent;
       cursor: pointer;
@@ -90,18 +106,19 @@ import { FeelingsSummaryPopupComponent } from '../feelings-summary-popup/feeling
     }
 
     .feelings-strip__emoji-btn:hover:not(:disabled) {
-      background: rgba(212, 160, 23, 0.1);
+      /* No token for a golden wash: mixed from the accent token over transparent. */
+      background: var(--wash-accent-weak);
       transform: scale(1.15);
     }
 
     .feelings-strip__emoji-btn--selected {
-      border-color: #d4a017;
-      background: rgba(212, 160, 23, 0.2);
+      border-color: var(--card-color-5);
+      background: var(--wash-accent-medium);
       transform: scale(1.1);
     }
 
     .feelings-strip__emoji-btn--selected:hover:not(:disabled) {
-      background: rgba(212, 160, 23, 0.3);
+      background: var(--wash-accent-strong);
       transform: scale(1.15);
     }
 
@@ -112,7 +129,8 @@ import { FeelingsSummaryPopupComponent } from '../feelings-summary-popup/feeling
     }
 
     .feelings-strip__emoji-btn:focus-visible {
-      outline: 2px solid #d4a017;
+      /* --color-primary-dark clears 3:1 against the strip surface (R10.6) */
+      outline: 2px solid var(--color-primary-dark);
       outline-offset: 2px;
     }
 
@@ -120,25 +138,28 @@ import { FeelingsSummaryPopupComponent } from '../feelings-summary-popup/feeling
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 26px;
-      height: 26px;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
+      flex: 0 0 auto;
       padding: 0;
-      border: 1px solid #d0d5dd;
+      border: 1px solid var(--color-primary-light);
       border-radius: 4px;
       background: transparent;
       cursor: pointer;
       font-size: 0.85rem;
       line-height: 1;
-      margin-left: 0.125rem;
+      margin-left: 4px;
       transition: background-color 0.15s ease;
     }
 
     .feelings-strip__summary-btn:hover {
-      background: #f0f0f0;
+      background: var(--wash-neutral-weak);
     }
 
     .feelings-strip__summary-btn:focus-visible {
-      outline: 2px solid #d4a017;
+      outline: 2px solid var(--color-primary-dark);
       outline-offset: 2px;
     }
 

@@ -218,6 +218,12 @@ export interface RetroConfiguration {
   enableGifEmoji: boolean;               // default: true
   columnLayout: ColumnLayout;             // default: 'vertical'
   allowedFeelings: FeelingCategory[];     // ordered list of allowed feelings, min 1, max 10
+  /**
+   * Sizes the card text area to its content.
+   * Optional so configuration records that omit it stay valid; an absent or
+   * non-boolean value is treated as `true` (see `resolveFluidCardHeight`).
+   */
+  fluidCardHeight?: boolean;              // default: true
 }
 
 // Retrospective template definition
@@ -345,3 +351,53 @@ export function computeConsensusLevel(
 
   return metrics.spread > 5 ? 'high-divergence' : 'partial';
 }
+
+// --- Retrospective card height ---
+
+/**
+ * Single coercion point for the `fluidCardHeight` default.
+ * Returns the value when it is a boolean, otherwise `true`.
+ */
+export function resolveFluidCardHeight(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : true;
+}
+
+// --- Retrospective session listing ---
+
+// Summary entry of GET /api/retro/sessions/mine
+export interface RetroSessionSummary {
+  sessionId: string;
+  boardName: string;
+  createdAt: string;        // ISO 8601
+  lastActivityAt: string;   // ISO 8601
+  participantCount: number; // non-negative integer
+  cardCount: number;        // non-negative integer
+  isCompleted: boolean;
+}
+
+// Response body of GET /api/retro/sessions/mine
+export interface RetroSessionsResponse {
+  sessions: RetroSessionSummary[];
+}
+
+// --- Retrospective session end ---
+
+// WebSocket event type constant for a moderator ending a retro session
+export const RETRO_SESSION_ENDED = 'retro:session:ended';
+
+// Payload of retro:session:ended
+export interface RetroSessionEndedPayload {
+  sessionId: string;
+}
+
+// --- Connection lifecycle ---
+
+// Shared connection lifecycle state for the poker and retro WebSocket services
+export type ConnectionState = 'connected' | 'disconnected' | 'reconnecting';
+
+// Indicator labels, used as both the title attribute and the visible label
+export const CONNECTION_LABEL: Record<ConnectionState, string> = {
+  connected: 'Connected',
+  reconnecting: 'Trying to restore connection',
+  disconnected: 'Disconnected',
+};
