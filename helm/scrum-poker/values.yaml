@@ -11,7 +11,7 @@ replicaCount: 1
 image:
   repository: siddhivinayaksk/scrum-pocker
   # Image tag. Empty falls back to Chart.appVersion.
-  tag: "latest"
+  tag: ""
   # Permitted values: Always, IfNotPresent, Never
   pullPolicy: Always
 
@@ -23,10 +23,10 @@ nameOverride: ""
 # Replaces the generated release-qualified resource name outright.
 fullnameOverride: ""
 
-# ServiceAccount the pod runs as. create=false with an empty name resolves to
-# the namespace default ServiceAccount.
+# ServiceAccount the pod runs as. create=true renders one named after the
+# release; create=false with an empty name resolves to the namespace default.
 serviceAccount:
-  create: false
+  create: true
   name: ""
   annotations: {}
 
@@ -49,7 +49,7 @@ securityContext:
 
 # Writable scratch volume mounted at /tmp when the root filesystem is read-only.
 tmpVolume:
-  sizeLimit: 10Mi
+  sizeLimit: 64Mi
 
 # Service fronting the application pod. Defaults match k8s/k8s.yaml: ClusterIP
 # exposing port 80 and forwarding to container port 3000.
@@ -74,7 +74,7 @@ deploymentStrategy:
 # Ingress exposing the application, including its WebSocket endpoints.
 # Defaults match k8s/ingress.yaml: nginx class, path /scrum-poker, no host.
 ingress:
-  enabled: false
+  enabled: true
   className: nginx
   annotations:
     # A WebSocket connection idle longer than this is closed by the proxy.
