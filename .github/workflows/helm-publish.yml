@@ -128,6 +128,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: helm-chart-package
+          # upload-artifact >= 4.4.0 skips hidden paths by default, and
+          # .cr-release-packages is hidden, so the *.tgz glob matched nothing and
+          # if-no-files-found: error failed the job. The glob is .tgz-only, so
+          # opting in cannot pick up .git or .env.
+          include-hidden-files: true
           path: .cr-release-packages/*.tgz
           if-no-files-found: error
 
