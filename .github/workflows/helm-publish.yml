@@ -60,16 +60,58 @@ jobs:
           # ubuntu-latest ships kubectl but provides no cluster, and
           # `kubectl apply --dry-run=client` still needs an API server for its RESTMapper,
           # so smoke check 2 cannot pass here. The script records that check as skipped
-          # when kubectl is absent from PATH (see its preflight), so drop kubectl's
-          # directory for this step only. The script is not executable in git, hence `bash`.
-          kubectl_dir="$(dirname "$(command -v kubectl)")"
-          PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vx "$kubectl_dir" | paste -sd ':' -)"
+          # when kubectl is absent from PATH (see its preflight), so hide kubectl for this
+          # step only. The script is not executable in git, hence `bash`.
+          #
+          # kubectl's directory cannot simply be dropped from PATH: the runner image
+          # apt-installs kubectl, so it lives in /usr/bin alongside grep, sed, wc, tr and
+          # dirname, and /bin is a symlink to /usr/bin, so dropping one entry leaves the
+          # other resolving the same binary. Instead each PATH directory that holds a
+          # kubectl is replaced, at its original position, by a directory of symlinks to
+          # that directory's executables with kubectl left out. Position and first-wins
+          # link order are preserved so tool precedence does not change - the toolcache
+          # helm from setup-helm must keep winning over the image's /usr/local/bin/helm.
+          shadow_dir="$(mktemp -d)"
+          narrowed=""
+          shadow_inserted=0
+          IFS=':' read -r -a path_entries <<< "$PATH"
+          for entry in "${path_entries[@]}"; do
+            [ -n "$entry" ] || continue          # an empty entry means "."; never keep it
+            while [ "$entry" != "/" ] && [ "${entry%/}" != "$entry" ]; do
+              entry="${entry%/}"                 # normalise trailing slashes before comparing
+            done
+            if [ -x "$entry/kubectl" ]; then
+              linkable=()
+              for candidate in "$entry"/*; do
+                # -f -x skips subdirectories and dangling symlinks, and covers the
+                # unexpanded glob of a PATH entry that does not exist.
+                [ -f "$candidate" ] && [ -x "$candidate" ] || continue
+                name="${candidate##*/}"
+                [ "$name" != "kubectl" ] || continue
+                [ ! -e "$shadow_dir/$name" ] || continue   # first PATH entry wins, as usual
+                linkable+=("$candidate")
+              done
+              [ "${#linkable[@]}" -eq 0 ] || ln -s "${linkable[@]}" "$shadow_dir/"
+              if [ "$shadow_inserted" -eq 0 ]; then
+                narrowed="${narrowed:+$narrowed:}$shadow_dir"
+                shadow_inserted=1
+              fi
+            else
+              narrowed="${narrowed:+$narrowed:}$entry"
+            fi
+          done
+          PATH="$narrowed"
           export PATH
+          hash -r
+          # `command -v` is the same probe the script's preflight uses, so this guard tests
+          # exactly the condition check 2 depends on. `hash -r` above makes it immune to
+          # bash's command hash table.
           if command -v kubectl > /dev/null 2>&1; then
             echo "::error::kubectl is still on PATH; smoke check 2 would fail"
             exit 1
           fi
-          for required in helm bash grep sed paste; do
+          # These are every external command tests/helm-smoke.test.sh invokes.
+          for required in helm bash grep sed wc tr dirname; do
             if ! command -v "$required" > /dev/null 2>&1; then
               echo "::error::$required disappeared from the narrowed PATH"
               exit 1
