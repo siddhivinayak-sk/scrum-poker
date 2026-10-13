@@ -1,0 +1,1191 @@
+{
+  "pbtResults": {
+    "2.4 Write property test for rendered resource name bounds": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648606523
+    },
+    "4.3 Write property test for JWT secret encoding and generation": {
+      "status": "passed",
+      "lastRunTimestamp": 1791647645875
+    },
+    "7.8 Write property test for probe path invariance under base path": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648603465
+    },
+    "7.7 Write property test for configuration round-tripping into the container environment": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648602056
+    },
+    "7.10 Write property test for the tmp volume and mount pairing": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648605803
+    },
+    "10.6 Write property test for render well-formedness, determinism, and checksum fidelity": {
+      "status": "passed",
+      "lastRunTimestamp": 1791612509389
+    },
+    "10.3 Write property test for ingress annotation precedence": {
+      "status": "passed",
+      "lastRunTimestamp": 1791613972870
+    },
+    "10.5 Write property test for conditional-omission completeness": {
+      "status": "passed",
+      "lastRunTimestamp": 1791614129095
+    },
+    "11.2 Write property test for post-install URL composition": {
+      "status": "passed",
+      "lastRunTimestamp": 1791614960018
+    },
+    "7.6 Write property test for the image reference": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648601118
+    },
+    "7.9 Write property test for independent probe field and block control": {
+      "status": "passed",
+      "lastRunTimestamp": 1791648604418
+    },
+    "2.5 Write property test for the selector label set": {
+      "status": "failed",
+      "failingExample": "Property failed after 31 tests\n{ seed: 142605871, path: \"30:0:0:...:1\", endOnFailure: true }\nCounterexample: [\"aaaaaaaaaaaaaaa\",{\"auth\":{\"jwtSecret\":\"\",\"existingSecret\":\"aa\",\"existingSecretKey\":\"N\"},\"config\":{\"nodeEnv\":\"production\",\"basePath\":\"/aa\",\"preservePath\":false},\"ingress\":{\"enabled\":false,\"className\":\"\",\"annotations\":{},\"hosts\":[{\"host\":\"aa.aa\",\"paths\":[{\"path\":\"/\"}]}],\"tls\":[{\"secretName\":\"aa\",\"hosts\":[\"aa.aa\"]}],\"websocket\":{}}},[{\"version\":\"1.0.0-alpha.1\",\"appVersion\":\"0.0.0\"},{\"version\":\"0.0.0\",\"appVersion\":\"latest\"}]]\nShrunk 74 time(s)\n\nCaused by: AssertionError: Error: values don't meet the specifications of the schema(s) in the following chart(s):\nscrum-poker:\n- auth.existingSecretKey: Invalid type. Expected: string, given: boolean\n: expected 1 to be +0\n\nPre-existing, already triaged at checkpoint 6 and deliberately not fixed here: this file's local `renderChartCopy` serialises generated values with the yaml package's default stringify options instead of the shared `stringifyValues`, so the string \"N\" is written as a bare scalar and Helm's YAML 1.1 parser reads it back as the boolean false. Harness-side type loss, not a chart defect.",
+      "lastRunTimestamp": 1791648618446
+    }
+  },
+  "executionHistory": {
+    "1.1 Create `helm/scrum-poker/Chart.yaml` and `helm/scrum-poker/.helmignore`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550373706
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550393862
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550496450
+      }
+    ],
+    "1.2 Create `helm/scrum-poker/values.yaml` with the complete default set": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550373874
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550500683
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550646774
+      }
+    ],
+    "2.1 Create `helm/scrum-poker/templates/_helpers.tpl` with naming and labelling templates": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374045
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550651574
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550963882
+      }
+    ],
+    "2.2 Add derived-name helpers, base-path normalisation, and the validation stub to `_helpers.tpl`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374176
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550970820
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791551618852
+      }
+    ],
+    "2.3 Set up the property-test harness at `tests/helm/`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374303
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550971103
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791551619463
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791613320728
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791613796977
+      }
+    ],
+    "2.4 Write property test for rendered resource name bounds": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374430
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791553507518
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556984494
+      }
+    ],
+    "2.5 Write property test for the selector label set": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374548
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791553507645
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556985127
+      }
+    ],
+    "3.1 Create `helm/scrum-poker/templates/configmap.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374694
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791551629511
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791553488977
+      }
+    ],
+    "3.2 Write unit tests for ConfigMap value quoting": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374827
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556992195
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557961532
+      }
+    ],
+    "4.1 Add `scrum-poker.jwtSecret` to `_helpers.tpl`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550374946
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791551630961
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791553489753
+      }
+    ],
+    "4.2 Create `helm/scrum-poker/templates/secret.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375108
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556993551
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557962292
+      }
+    ],
+    "4.3 Write property test for JWT secret encoding and generation": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375221
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557974083
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560508575
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791562718735
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563853032
+      }
+    ],
+    "4.4 Write integration tests for secret reuse across upgrade": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375361
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557974822
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560509505
+      }
+    ],
+    "5.1 Create `helm/scrum-poker/templates/serviceaccount.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375485
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791551631685
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791553490958
+      }
+    ],
+    "5.2 Write unit tests for the four ServiceAccount combinations": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375657
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556994747
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557963696
+      }
+    ],
+    "6. Checkpoint - ConfigMap, Secret, and ServiceAccount render": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375786
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628133913
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791647089513
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791648040575
+      }
+    ],
+    "7.1 Create `helm/scrum-poker/templates/deployment.yaml` core structure": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550375911
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556995712
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557964779
+      }
+    ],
+    "7.2 Wire container environment into `deployment.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376027
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557971635
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560510887
+      }
+    ],
+    "7.3 Add readiness and liveness probes to `deployment.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376134
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560536859
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560722836
+      }
+    ],
+    "7.4 Add resources, security contexts, and the tmp volume to `deployment.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376239
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560729722
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791562199125
+      }
+    ],
+    "7.5 Add optional scheduling and pull-secret blocks to `deployment.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376343
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791562204577
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791562711736
+      }
+    ],
+    "7.6 Write property test for the image reference": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376469
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563864540
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588923374
+      }
+    ],
+    "7.7 Write property test for configuration round-tripping into the container environment": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376596
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563864925
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588924583
+      }
+    ],
+    "7.8 Write property test for probe path invariance under base path": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376714
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563866322
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588925523
+      }
+    ],
+    "7.9 Write property test for independent probe field and block control": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376823
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563867557
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588926925
+      }
+    ],
+    "7.10 Write property test for the tmp volume and mount pairing": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550376953
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791563868173
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588927836
+      }
+    ],
+    "8.1 Create `helm/scrum-poker/templates/service.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377080
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557972534
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560511651
+      }
+    ],
+    "8.2 Write unit tests for the Service type, affinity, and nodePort matrix": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377214
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560537719
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560723875
+      }
+    ],
+    "9. Checkpoint - workload and Service render and validate": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377451
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134047
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791648047510
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791648669057
+      }
+    ],
+    "10.1 Create `helm/scrum-poker/templates/ingress.yaml` structure": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377558
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588941280
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791589655324
+      }
+    ],
+    "10.2 Implement the annotation merge in `ingress.yaml`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377691
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791589660882
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590376161
+      }
+    ],
+    "10.3 Write property test for ingress annotation precedence": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377810
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590383347
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614164859
+      }
+    ],
+    "10.4 Write property test for collection count, order, and content preservation": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550377925
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590384485
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791612167147
+      }
+    ],
+    "10.5 Write property test for conditional-omission completeness": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378031
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590385466
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614166061
+      }
+    ],
+    "10.6 Write property test for render well-formedness, determinism, and checksum fidelity": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378140
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590386815
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614167212
+      }
+    ],
+    "11.1 Create `helm/scrum-poker/templates/NOTES.txt` with its four branches": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378265
+      },
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791590387865
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791612177540
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614168221
+      }
+    ],
+    "11.2 Write property test for post-install URL composition": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378377
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614177541
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617398483
+      }
+    ],
+    "11.3 Write unit tests for the remaining notes branches": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378489
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614178355
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617398828
+      }
+    ],
+    "12.1 Create `helm/scrum-poker/values.schema.json`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378602
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614176227
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617398401
+      }
+    ],
+    "12.2 Write property test for schema rejection before rendering": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378712
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617407705
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791618466083
+      }
+    ],
+    "12.3 Write integration test for release revision preservation on rejected upgrade": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550378835
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617408799
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791618466980
+      }
+    ],
+    "13.1 Implement guards 1–5 in `scrum-poker.validate`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379006
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617406607
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791618465311
+      }
+    ],
+    "13.2 Implement guards 6–9 in `scrum-poker.validate`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379131
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791618472898
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791619640985
+      }
+    ],
+    "13.3 Implement guards 10–13 in `scrum-poker.validate`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379265
+      },
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791619647490
+      },
+      {
+        "executionId": "e97e5108-6690-4f77-881d-28c33b328a88",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791621853613
+      },
+      {
+        "executionId": "55ee9aaf-8939-45c9-967f-1510cc5233d5",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791626176466
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134185
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628149280
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628614401
+      }
+    ],
+    "13.4 Write property test for base path and ingress path agreement": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379487
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134284
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628625164
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645310594
+      }
+    ],
+    "13.5 Write property test for guard completeness and clean rejection": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379805
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134374
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628626517
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645310928
+      }
+    ],
+    "14. Checkpoint - the chart is complete and both gates pass": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550379977
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134454
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791648705161
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791652262553
+      }
+    ],
+    "15.1 Create `tests/helm-smoke.test.sh` harness skeleton": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380164
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134548
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628627300
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645312017
+      }
+    ],
+    "15.2 Add the default-render checks to `tests/helm-smoke.test.sh`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380305
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134649
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645338521
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646131331
+      }
+    ],
+    "15.3 Add the ingress and negative-guard checks to `tests/helm-smoke.test.sh`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380433
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134736
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646138995
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646417820
+      }
+    ],
+    "15.4 Add the truncation and documentation checks to `tests/helm-smoke.test.sh`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380562
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134824
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646426245
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791647074026
+      }
+    ],
+    "16.1 Create `helm/scrum-poker/README.md` with structure, commands, and manifest parity": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380681
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628134921
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645338787
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646132176
+      }
+    ],
+    "16.2 Add the values table to `helm/scrum-poker/README.md`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380795
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628135024
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646139727
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646418514
+      }
+    ],
+    "16.3 Add the examples, WebSocket, JWT, scaling, and troubleshooting sections to `helm/scrum-poker/README.md`": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550380927
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628135123
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791646424998
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791647075043
+      }
+    ],
+    "17. Final checkpoint - full validation": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550381051
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791628135221
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791652270662
+      },
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791652886358
+      }
+    ],
+    "1. Chart scaffolding and default values": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791550646933
+      }
+    ],
+    "2. Named template helpers": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791556985255
+      }
+    ],
+    "3. ConfigMap template": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557961670
+      }
+    ],
+    "5. ServiceAccount template": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791557963838
+      }
+    ],
+    "4. Secret template and JWT resolution": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560509620
+      }
+    ],
+    "8. Service template": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791560724041
+      }
+    ],
+    "7. Deployment template": [
+      {
+        "executionId": "2cd71c89-c3b8-4787-a27d-0808ef5a400c",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791588927954
+      }
+    ],
+    "10. Ingress template": [
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791614167376
+      }
+    ],
+    "11. Post-install notes": [
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791617398929
+      }
+    ],
+    "12. Values schema": [
+      {
+        "executionId": "867b6f7c-a851-4d36-af2f-9e72ffc9b128",
+        "chatSessionId": "sess_1fcc119e-4029-435f-a889-e26221bb81ca",
+        "timestamp": 1791618467114
+      }
+    ],
+    "13. Cross-field validation guards": [
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791645311025
+      }
+    ],
+    "15. Chart smoke test": [
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791647074213
+      }
+    ],
+    "16. Operator documentation": [
+      {
+        "executionId": "9fadac7a-490c-49dc-82d5-ffdaf65a428e",
+        "chatSessionId": "sess_051dd710-f4ca-4a57-952c-ce4c401e765f",
+        "timestamp": 1791647075164
+      }
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+# Default values for the scrum-poker chart.
+# Every top-level key below is documented, and the chart README holds one
+# values-table row per key. Enumerated keys name their permitted values.
+
+# Number of application pods. The ONLY supported value is 1: poker and retro
+# session state lives in the memory of a single Node.js process, so a second
+# pod would hold a second, disconnected set of sessions.
+replicaCount: 1
+
+# Container image coordinates for the Scrum Poker application.
+image:
+  repository: siddhivinayaksk/scrum-pocker
+  # Image tag. Empty falls back to Chart.appVersion.
+  tag: "latest"
+  # Permitted values: Always, IfNotPresent, Never
+  pullPolicy: Always
+
+# Secrets used to pull the image from a private registry. Empty list = omitted.
+imagePullSecrets: []
+
+# Overrides the chart name used in resource names and labels.
+nameOverride: ""
+# Replaces the generated release-qualified resource name outright.
+fullnameOverride: ""
+
+# ServiceAccount the pod runs as. create=false with an empty name resolves to
+# the namespace default ServiceAccount.
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# Extra annotations applied to the pod template. Empty mapping = omitted.
+podAnnotations: {}
+
+# Pod-level security context. Empty mapping = omitted.
+podSecurityContext: {}
+
+# Container-level security context. readOnlyRootFilesystem=true adds the
+# writable /tmp volume described under tmpVolume below.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Writable scratch volume mounted at /tmp when the root filesystem is read-only.
+tmpVolume:
+  sizeLimit: 10Mi
+
+# Service fronting the application pod. Defaults match k8s/k8s.yaml: ClusterIP
+# exposing port 80 and forwarding to container port 3000.
+service:
+  # Permitted values: ClusterIP, NodePort, LoadBalancer
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  # Only honoured for type NodePort; permitted range 30000-32767. Left null so
+  # the key stays documented while being absent from the rendered Service.
+  nodePort: null
+  # Permitted values: ClientIP, None, ""
+  sessionAffinity: None
+  sessionAffinityTimeoutSeconds: 10800
+  annotations: {}
+
+# Deployment update strategy. Permitted values: Recreate, RollingUpdate.
+# Recreate is the default so one session holder replaces another.
+deploymentStrategy:
+  type: Recreate
+
+# Ingress exposing the application, including its WebSocket endpoints.
+# Defaults match k8s/ingress.yaml: nginx class, path /scrum-poker, no host.
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    # A WebSocket connection idle longer than this is closed by the proxy.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: ""
+      paths:
+        - path: /scrum-poker
+          # Permitted values: Prefix, Exact, ImplementationSpecific
+          pathType: Prefix
+  tls: []
+  websocket:
+    affinity: false
+    cookieName: scrum-poker-affinity
+
+# Application runtime configuration delivered through a ConfigMap.
+config:
+  # Permitted values: production, development
+  nodeEnv: production
+  # Public URL prefix. Empty = cluster root. Requires a leading /, rejects a
+  # trailing /. Must equal the ingress path when preservePath is true.
+  basePath: /scrum-poker
+  # true when the ingress forwards the full path including basePath.
+  preservePath: true
+
+# JWT signing key handling. Without this the application falls back to a
+# hard-coded key compiled into the image.
+auth:
+  # Empty triggers generation of a 32-character random value at install time.
+  jwtSecret: ""
+  # Name of a pre-existing Secret; mutually exclusive with jwtSecret.
+  existingSecret: ""
+  existingSecretKey: JWT_SECRET
+
+# Additional container environment variables; each entry needs a non-empty name.
+extraEnv: []
+
+# CPU and memory requests and limits. Empty mapping = cluster defaults apply.
+resources:
+  requests:
+    cpu: 50m
+    memory: 50Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+# Readiness probe against /api/health, which is served at a fixed path
+# independent of config.basePath.
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+# Liveness probe against /api/health; a failure restarts the container.
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+# Node labels required for scheduling. Empty mapping = omitted.
+nodeSelector: {}
+# Taints the pod tolerates. Empty list = omitted.
+tolerations: []
+# Affinity and anti-affinity rules. Empty mapping = omitted.
+affinity: {}
+
+# Horizontal autoscaling. Must stay false: the application holds session
+# state in process memory and supports exactly one replica.
+autoscaling:
+  enabled: false

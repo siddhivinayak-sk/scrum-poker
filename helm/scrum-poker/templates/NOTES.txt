@@ -1,0 +1,74 @@
+{{- include "scrum-poker.validate" . -}}
+{{/*
+Post-install guidance, rendered by Helm on install and on upgrade alike.
+
+This file is NOT a Kubernetes manifest: Helm collects it into
+release.Info.Notes instead of the manifest stream, so it emits plain text and
+never a YAML document. The chart's quote-every-string convention therefore
+does not apply here. `helm template` hides it unless asked for explicitly
+(`-s templates/NOTES.txt`); `helm install` prints it last.
+
+Four independent branches, evaluated top to bottom:
+
+  1. ingress.enabled true  -> exactly one resolved application URL
+                              (Requirements 9.4, 9.8)
+     ingress.enabled false -> exactly one kubectl port-forward command
+                              (Requirement 9.5)
+  2. auth.existingSecret empty -> the command that reads the generated JWT
+     signing key out of the Secret this chart rendered (Requirement 5.10).
+     A non-empty auth.existingSecret means no Secret was rendered, so the
+     branch is skipped.
+  3. replicaCount > 1 without ClientIP affinity -> session-state warning
+     (Requirement 10.3).
+
+Exactly one URL is printed in branch 1, so the port-forward branch names
+localhost without an http:// prefix rather than emitting a second URL.
+*/}}
+{{- $fullname := include "scrum-poker.fullname" . -}}
+{{- $basePath := .Values.config.basePath | default "" -}}
+{{- $scheme := "http" -}}
+{{- if .Values.ingress.tls -}}
+{{- $scheme = "https" -}}
+{{- end -}}
+{{- $host := "" -}}
+{{- if .Values.ingress.hosts -}}
+{{- $host = (index .Values.ingress.hosts 0).host | default "" -}}
+{{- end -}}
+{{- $hostMissing := not $host -}}
+{{- if $hostMissing -}}
+{{- $host = "<your-ingress-host>" -}}
+{{- end -}}
+{{- $url := printf "%s://%s%s" $scheme $host $basePath -}}
+Scrum Poker is installed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+{{ if .Values.ingress.enabled }}
+Open the application at:
+
+    {{ $url }}
+{{- if $hostMissing }}
+
+The ingress entry carries no host, so the rendered rule matches every incoming
+host. Swap the placeholder above for the host your ingress controller answers
+on, or set ingress.hosts[0].host to pin the rule to a single host.
+{{- end }}
+{{- else }}
+The ingress is disabled. Forward a local port to the Service instead:
+
+    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ $fullname }} 8080:{{ .Values.service.port }}
+
+The application is then reachable on localhost port 8080 under {{ $basePath | default "/" }}.
+{{- end }}
+{{- if not .Values.auth.existingSecret }}
+
+This release signs its JWTs with the key in the Secret the chart rendered.
+Read it back with:
+
+    kubectl get secret {{ include "scrum-poker.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath="{.data.JWT_SECRET}" | base64 -d
+{{- end }}
+{{- if and (gt (int .Values.replicaCount) 1) (ne (.Values.service.sessionAffinity | default "") "ClientIP") }}
+
+WARNING: replicaCount is {{ .Values.replicaCount }} and service.sessionAffinity is not ClientIP.
+Poker and retro session state lives in the memory of each pod, so every pod
+keeps its own disconnected set of sessions. All participants of one session
+need to land on one pod, or they will see different votes and different retro
+boards. Set replicaCount to 1, or set service.sessionAffinity to ClientIP.
+{{- end }}

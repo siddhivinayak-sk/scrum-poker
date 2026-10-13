@@ -1,0 +1,259 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'helm/**'
+      - 'tests/helm-smoke.test.sh'
+      - '.github/workflows/helm-publish.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'helm/**'
+      - 'tests/helm-smoke.test.sh'
+      - '.github/workflows/helm-publish.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: 'Chart version to package and push to GHCR. Empty uses the version in Chart.yaml.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CHART_DIR: helm/scrum-poker
+  CHART_NAME: scrum-poker
+  OCI_REPOSITORY: oci://ghcr.io/siddhivinayak-sk/charts
+  HELM_VERSION: v3.18.4
+
+jobs:
+  lint:
+    name: Lint & Package Chart
+    runs-on: ubuntu-latest
+    # Only the lint path cancels superseded runs. The publish jobs declare their own
+    # non-cancelling groups so a second push to main can never kill a half-finished push.
+    concurrency:
+      group: ${{ github.workflow }}-lint-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          # >= 3.8 is required for OCI `helm push` and for values.schema.json enforcement.
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Lint chart
+        run: helm lint "$CHART_DIR"
+
+      - name: Render chart with default values
+        run: helm template test-release "$CHART_DIR" > /dev/null
+
+      - name: Run chart smoke tests
+        run: |
+          # ubuntu-latest ships kubectl but provides no cluster, and
+          # `kubectl apply --dry-run=client` still needs an API server for its RESTMapper,
+          # so smoke check 2 cannot pass here. The script records that check as skipped
+          # when kubectl is absent from PATH (see its preflight), so drop kubectl's
+          # directory for this step only. The script is not executable in git, hence `bash`.
+          kubectl_dir="$(dirname "$(command -v kubectl)")"
+          PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vx "$kubectl_dir" | paste -sd ':' -)"
+          export PATH
+          if command -v kubectl > /dev/null 2>&1; then
+            echo "::error::kubectl is still on PATH; smoke check 2 would fail"
+            exit 1
+          fi
+          for required in helm bash grep sed paste; do
+            if ! command -v "$required" > /dev/null 2>&1; then
+              echo "::error::$required disappeared from the narrowed PATH"
+              exit 1
+            fi
+          done
+          bash tests/helm-smoke.test.sh
+
+      - name: Package chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package "$CHART_DIR" --destination .cr-release-packages
+
+      - name: Upload chart package
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart-package
+          path: .cr-release-packages/*.tgz
+          if-no-files-found: error
+
+  publish-oci:
+    name: Publish to GHCR (OCI)
+    runs-on: ubuntu-latest
+    needs: lint
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: ${{ github.workflow }}-publish-oci-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Resolve chart version
+        id: version
+        # Event data reaches the script through env, never through ${{ }} interpolation
+        # inside the shell body, so a crafted release tag cannot inject shell.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.chart_version }}
+        run: |
+          chart_version="$(helm show chart "$CHART_DIR" | sed -n 's/^version: *//p')"
+          app_version="$(helm show chart "$CHART_DIR" | sed -n 's/^appVersion: *//p' | tr -d '"')"
+          case "$EVENT_NAME" in
+            release)
+              # Strip a leading v so the tag v1.2.3 publishes chart version 1.2.3, and point
+              # appVersion at the matching Docker Hub tag build-and-push.yml produces.
+              resolved="${RELEASE_TAG#v}"
+              resolved_app="$resolved"
+              ;;
+            workflow_dispatch)
+              if [ -n "$INPUT_VERSION" ]; then
+                resolved="${INPUT_VERSION#v}"
+              else
+                resolved="$chart_version"
+              fi
+              resolved_app="$app_version"
+              ;;
+            *)
+              resolved="$chart_version"
+              resolved_app="$app_version"
+              ;;
+          esac
+          if ! printf '%s' "$resolved" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::resolved chart version '$resolved' is not semver; helm package would reject it"
+            exit 1
+          fi
+          echo "chart_version=$resolved" >> "$GITHUB_OUTPUT"
+          echo "app_version=$resolved_app" >> "$GITHUB_OUTPUT"
+          echo "package=$CHART_NAME-$resolved.tgz" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package "$CHART_DIR" \
+            --version '${{ steps.version.outputs.chart_version }}' \
+            --app-version '${{ steps.version.outputs.app_version }}' \
+            --destination .cr-release-packages
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR
+        run: helm push ".cr-release-packages/${{ steps.version.outputs.package }}" "$OCI_REPOSITORY"
+
+      - name: Log out of GHCR
+        if: always()
+        run: helm registry logout ghcr.io || true
+
+      - name: Write summary
+        run: |
+          {
+            echo "### Helm chart published to GHCR"
+            echo
+            echo '```bash'
+            echo "helm install scrum-poker $OCI_REPOSITORY/$CHART_NAME \\"
+            echo "  --version ${{ steps.version.outputs.chart_version }} \\"
+            echo "  --namespace scrum-poker --create-namespace"
+            echo '```'
+            echo
+            echo "appVersion: \`${{ steps.version.outputs.app_version }}\` · Helm 3.8+ required for OCI."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-pages:
+    name: Publish to GitHub Pages chart repo
+    runs-on: ubuntu-latest
+    needs: lint
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-publish-pages-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      # chart-releaser diffs chart versions against existing git tags, so it needs
+      # the full history rather than the default shallow clone.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Warn when a release tag disagrees with Chart.yaml
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # chart-releaser always publishes the version in Chart.yaml; it has no
+          # --version override. publish-oci derives the version from the release tag, so
+          # the two destinations diverge unless Chart.yaml was bumped to match the tag.
+          chart_version="$(helm show chart "$CHART_DIR" | sed -n 's/^version: *//p')"
+          if [ "${RELEASE_TAG#v}" != "$chart_version" ]; then
+            echo "::warning::release tag ${RELEASE_TAG} does not match Chart.yaml version ${chart_version}; the Pages repo will publish ${chart_version} while GHCR publishes ${RELEASE_TAG#v}"
+          fi
+
+      # chart-releaser creates one GitHub release per chart version and only for a version
+      # that has none yet. With skip_existing, a push to main that did not bump
+      # Chart.yaml version is a silent no-op, not a failure.
+      # Prerequisites, both one-time and manual: the gh-pages branch must already exist,
+      # and Settings > Pages must serve from it.
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1
+        with:
+          charts_dir: helm
+          skip_existing: true
+          # Application releases drive the Docker build; a chart release must not take
+          # over the repository's "Latest release" badge.
+          mark_as_latest: false
+          pages_branch: gh-pages
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write summary
+        run: |
+          {
+            echo "### Helm chart published to the GitHub Pages repo"
+            echo
+            echo '```bash'
+            echo "helm repo add scrum-poker https://siddhivinayak-sk.github.io/scrum-poker"
+            echo "helm repo update"
+            echo "helm install scrum-poker scrum-poker/$CHART_NAME --namespace scrum-poker --create-namespace"
+            echo '```'
+            echo
+            echo "No new release is created when helm/scrum-poker/Chart.yaml version is unchanged."
+          } >> "$GITHUB_STEP_SUMMARY"

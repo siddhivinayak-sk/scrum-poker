@@ -5,6 +5,7 @@ applyTo: "**/*.ts"
 # Project Conventions
 
 > For no-regression, security, and TypeScript quality rules see [code-quality.instructions.md](code-quality.instructions.md).  
+> For the release tag / Helm chart version rules see [release-versioning.instructions.md](release-versioning.instructions.md).  
 > For project layout, build commands, and common pitfalls see [AGENTS.md](../../AGENTS.md).
 
 ## Naming Conventions

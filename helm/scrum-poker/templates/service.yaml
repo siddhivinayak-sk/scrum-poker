@@ -1,0 +1,56 @@
+{{- include "scrum-poker.validate" . -}}
+{{/*
+One v1 Service in front of the application pod.
+
+targetPort is the string container-port name "http", not a number, so the
+Service follows a change to service.targetPort through the Deployment's port
+name without a second substitution.
+
+The sessionAffinity branch is exhaustive: anything that is not exactly
+"ClientIP" -- including "None" and the empty string -- renders "None".
+
+nodePort is gated on service.type as well as on the value, so a leftover
+service.nodePort is silently ignored for a ClusterIP or LoadBalancer Service
+while still being range-checked by guard 10 when the type is NodePort.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  {{/*
+  Quoted for the same reason as spec.type below: metadata.name is a string in
+  the Kubernetes API, and a fullnameOverride of y or 010 would otherwise
+  render a bare scalar the parser resolves to a boolean or a number.
+  */}}
+  name: {{ include "scrum-poker.fullname" . | quote }}
+  labels:
+    {{- include "scrum-poker.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{/*
+  type and the port name and targetPort are quoted: all three are strings in
+  the Kubernetes API, and a bare YAML scalar such as y, no, on, or 010 is
+  resolved by the parser to a boolean or a number, which the API server
+  rejects. port and nodePort stay unquoted - both are integers in the API.
+  */}}
+  type: {{ .Values.service.type | default "ClusterIP" | quote }}
+  {{- if eq .Values.service.sessionAffinity "ClientIP" }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.service.sessionAffinityTimeoutSeconds }}
+  {{- else }}
+  sessionAffinity: None
+  {{- end }}
+  selector:
+    {{- include "scrum-poker.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: "http"
+      port: {{ .Values.service.port }}
+      targetPort: "http"
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}

@@ -597,7 +597,7 @@ The Docker image is available on Docker Hub: [siddhivinayaksk/scrum-pocker](http
 docker pull siddhivinayaksk/scrum-pocker:latest
 
 # Or pull a specific version
-docker pull siddhivinayaksk/scrum-pocker:0.0.3
+docker pull siddhivinayaksk/scrum-pocker:0.0.7
 ```
 
 ```bash
@@ -610,6 +610,222 @@ docker run -p 3000:3000 -e BASE_PATH=/scrum-poker scrum-poker
 Manifests are in the `k8s/` directory:
 - `k8s.yaml` — Deployment + Service
 - `ingress.yaml` — Ingress configuration
+
+### Helm Chart
+
+The chart lives at [`helm/scrum-poker`](helm/scrum-poker). It is published by
+[`.github/workflows/helm-publish.yml`](.github/workflows/helm-publish.yml) on every change to
+`helm/**` on `main` and on every published GitHub release, to two registries: the GHCR OCI
+registry and an HTTP chart repository served from GitHub Pages. The exhaustive values table,
+with one row per configurable key, is in [`helm/scrum-poker/README.md`](helm/scrum-poker/README.md).
+
+#### Install from the GHCR OCI registry (recommended)
+
+```bash
+helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
+  --version 0.0.7 \
+  --namespace scrum-poker \
+  --create-namespace
+```
+
+Helm 3.8 or newer is required for OCI registries, and the chart declares
+`kubeVersion: ">=1.19.0-0"`, so Kubernetes 1.19+. `--version` is required to pin a release
+from an OCI reference: unlike an HTTP repository, an OCI reference without a version does not
+resolve to the newest published chart.
+
+#### Install from the GitHub Pages chart repo
+
+```bash
+helm repo add scrum-poker https://siddhivinayak-sk.github.io/scrum-poker
+helm repo update
+helm install scrum-poker scrum-poker/scrum-poker \
+  --namespace scrum-poker \
+  --create-namespace
+```
+
+#### Customizing values
+
+The common case is a handful of `--set` flags. In `zsh`, quote each `--set` argument — unquoted
+square brackets glob:
+
+```bash
+helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
+  --version 0.0.7 \
+  --namespace scrum-poker --create-namespace \
+  --set image.tag=0.0.7 \
+  --set ingress.hosts[0].host=poker.example.com \
+  --set ingress.hosts[0].paths[0].path=/scrum-poker \
+  --set config.basePath=/scrum-poker
+```
+
+Anything larger belongs in a values file:
+
+```yaml
+# my-values.yaml
+replicaCount: 1                       # 1 is the only supported value, see the note below
+
+image:
+  repository: siddhivinayaksk/scrum-pocker
+  tag: "0.0.7"                        # "" falls back to the chart's appVersion
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP                     # ClusterIP | NodePort | LoadBalancer
+  port: 80
+  targetPort: 3000                    # also published to the container as PORT
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: poker.example.com
+      paths:
+        - path: /scrum-poker          # must equal config.basePath while preservePath is true
+          pathType: Prefix
+  tls:
+    - secretName: poker-tls
+      hosts:
+        - poker.example.com
+
+config:
+  nodeEnv: production                 # production | development
+  basePath: /scrum-poker              # published as BASE_PATH; "" serves at the cluster root
+  preservePath: true                  # true when the ingress forwards the full path
+
+auth:
+  jwtSecret: ""                       # "" generates a random 32-character secret at install
+  existingSecret: ""                  # or name a pre-created Secret; mutually exclusive
+  existingSecretKey: JWT_SECRET
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+```
+
+```bash
+helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
+  --version 0.0.7 \
+  --namespace scrum-poker --create-namespace \
+  -f my-values.yaml
+```
+
+The values overridden most often, with the real defaults from
+[`helm/scrum-poker/values.yaml`](helm/scrum-poker/values.yaml). See
+[`helm/scrum-poker/README.md`](helm/scrum-poker/README.md) for the full table:
+
+| Value | Default | What it controls |
+|-------|---------|------------------|
+| `image.repository` | `siddhivinayaksk/scrum-pocker` | Image to deploy |
+| `image.tag` | `""` | Image tag; empty falls back to the chart's `appVersion` |
+| `service.type` | `ClusterIP` | How the Service is exposed |
+| `service.port` | `80` | Port the Service publishes in the cluster |
+| `ingress.enabled` | `true` | Whether an Ingress is rendered |
+| `ingress.className` | `nginx` | IngressClass that serves the rule |
+| `ingress.hosts[0].host` | `""` | Hostname; empty matches any host |
+| `ingress.hosts[0].paths[0].path` | `/scrum-poker` | Path routed to the app |
+| `config.basePath` | `/scrum-poker` | `BASE_PATH`; empty serves at the cluster root |
+| `config.preservePath` | `true` | `PRESERVE_PATH`; false adds an nginx `rewrite-target: /` |
+| `auth.jwtSecret` | `""` | JWT key; empty generates a random 32-character value |
+| `auth.existingSecret` | `""` | Pre-created Secret holding the JWT key |
+| `replicaCount` | `1` | Pod count; `1` is the only supported value |
+| `resources.limits.memory` | `512Mi` | Container memory ceiling |
+
+**Constraints the chart enforces**
+
+- `config.basePath` needs a leading `/` and must not end with `/`. An empty value is legal and
+  means the cluster root; a bare `/` is legal too. `values.schema.json` applies `^$|^/` and
+  `maxLength: 64` first, so a malformed value such as `scrum-poker` is usually rejected before
+  any template runs. A trailing slash is caught by a single-field guard that lives in the
+  chart's render-time validation block, with
+  `config.basePath: "/scrum-poker/" must not end with "/" (supply "/scrum-poker" instead)`.
+- While `ingress.enabled` **and** `config.preservePath` are both `true`, `config.basePath` must
+  equal every configured ingress path. An empty `basePath` normalises to `/`, and one trailing
+  `/` is stripped from an ingress path longer than one character before the comparison. A
+  mismatch aborts the render with, verbatim:
+  `config.basePath: "/other" does not match ingress.hosts[0].paths[0].path "/scrum-poker" (with config.preservePath=true the ingress forwards the full path, so the two must be equal; set config.basePath to "/scrum-poker", change the ingress path, or set config.preservePath=false)`.
+  With `config.preservePath: false` the check does not run, because the ingress rewrites the
+  path to `/` before the application sees it.
+- `auth.jwtSecret` and `auth.existingSecret` are mutually exclusive; supplying both fails before
+  anything is written. Leaving both empty generates a 32-character random value, stored in a
+  Secret the chart renders, and `helm upgrade` looks the stored value up and reuses it so issued
+  tokens stay valid. The Secret name is the release-qualified chart name plus `-secret`, and the
+  release name is used as-is when it already contains the chart name — so a release named
+  `scrum-poker` yields `scrum-poker-secret`, while a release named `my-release` yields
+  `my-release-scrum-poker-secret`. Rather than guessing, read the name off the release with
+  `helm get manifest <release> | grep -A2 'kind: Secret'` or
+  `kubectl get secret -l app.kubernetes.io/instance=<release> --namespace <namespace>`. A
+  non-empty `auth.existingSecret` renders no Secret at all and reads the key named by
+  `auth.existingSecretKey` (default `JWT_SECRET`).
+- `replicaCount` must stay `1`: poker and retro session state lives in the memory of a single
+  Node.js process, so a second pod holds a second, disconnected set of sessions. The chart does
+  **not** block a value above `1` — `values.schema.json` only sets `minimum: 1` — it renders and
+  installs, and `NOTES.txt` prints a post-install warning when `replicaCount > 1` without
+  `service.sessionAffinity: ClientIP`. Multi-replica is therefore permitted by the chart but
+  operationally wrong. `autoscaling.enabled` **is** blocked and must stay `false`:
+  `autoscaling.enabled: must be false (got true); the application holds poker and retro session state in process memory and supports exactly one replica`.
+- Render before installing. `helm template scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.7 -f my-values.yaml`
+  exercises the same schema and guards offline.
+
+#### Publishing the chart
+
+[`.github/workflows/helm-publish.yml`](.github/workflows/helm-publish.yml) runs on pushes to
+`main` and on pull requests that touch `helm/**`, on published releases, and on manual dispatch.
+Pull requests lint, render, smoke-test and package only — nothing is published from a PR.
+
+To cut a chart release:
+
+1. Bump `version:` in `helm/scrum-poker/Chart.yaml`.
+2. Merge to `main`. GHCR gets the new chart version, and `chart-releaser` cuts a
+   `scrum-poker-<version>` GitHub release and refreshes `index.yaml` on `gh-pages`.
+3. Optionally publish a GitHub release tagged `v<same version>`. That sets the chart's
+   `appVersion` to the release version so it points at the matching Docker Hub tag, and it also
+   triggers `build-and-push.yml`.
+
+A push to `main` **without** a `Chart.yaml` version bump is a no-op for the Pages repo, not a
+failure: `chart-releaser` creates a release only for a version that does not have one yet, and
+`skip_existing: true` makes the re-run skip quietly. GHCR behaves differently — it re-pushes and
+overwrites the existing tag for that version.
+
+`workflow_dispatch` accepts an optional `chart_version` input. It overrides the packaged version
+for the GHCR push only; `chart-releaser` has no version override, so the Pages repo always
+publishes whatever is in `Chart.yaml`.
+
+**One-time manual setup, required before the first run.** CI cannot do any of this for you:
+
+1. **Create the `gh-pages` branch** — `chart-releaser` does not create it:
+   ```bash
+   git checkout --orphan gh-pages
+   git rm -rf .
+   printf '# Scrum Poker Helm chart repository\n' > README.md
+   cp helm/scrum-poker/artifacthub-repo.yml .
+   git add README.md artifacthub-repo.yml
+   git commit -m "chore: initialise gh-pages chart repository"
+   git push -u origin gh-pages
+   git checkout main
+   ```
+2. **Enable GitHub Pages on the `gh-pages` branch** in Settings > Pages. Until that is done,
+   `https://siddhivinayak-sk.github.io/scrum-poker/index.yaml` returns 404 and `helm repo add`
+   fails, even though the workflow reports success.
+3. **Make the GHCR package public.** The first `helm push` creates a *private* package, so set
+   `charts/scrum-poker` to public — and link it to this repository — under the account's Packages
+   settings before an anonymous `helm install` can work.
+4. **Optional, for Artifact Hub.** Register the repository at
+   `https://artifacthub.io/control-panel/repositories`, copy the repository ID into
+   [`helm/scrum-poker/artifacthub-repo.yml`](helm/scrum-poker/artifacthub-repo.yml), then deliver
+   that file: commit it to the `gh-pages` root for the HTTP repo, and for the OCI repo push it
+   under the special `artifacthub.io` tag:
+   ```bash
+   oras push ghcr.io/siddhivinayak-sk/charts/scrum-poker:artifacthub.io \
+     --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+     helm/scrum-poker/artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
+   ```
+
+No repository secrets are needed. Both publish jobs authenticate with the built-in
+`GITHUB_TOKEN`.
 
 ---
 

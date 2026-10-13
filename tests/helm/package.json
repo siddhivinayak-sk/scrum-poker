@@ -1,0 +1,17 @@
+{
+  "name": "scrum-poker-helm-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Property-based test harness for the scrum-poker Helm chart. Renders helm/scrum-poker offline and asserts the 16 correctness properties.",
+  "type": "module",
+  "scripts": {
+    "test:helm": "vitest run",
+    "test:helm:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "fast-check": "4.10.2",
+    "vitest": "4.1.11",
+    "yaml": "2.9.1"
+  }
+}

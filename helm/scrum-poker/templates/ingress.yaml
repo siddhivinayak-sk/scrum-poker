@@ -1,0 +1,105 @@
+{{- include "scrum-poker.validate" . -}}
+{{- if .Values.ingress.enabled }}
+{{/*
+One networking.k8s.io/v1 Ingress carrying both HTTP and WebSocket traffic over
+the same path prefix. The whole document sits inside the ingress.enabled
+conditional, so a disabled ingress renders no resource at all rather than an
+empty document separator.
+
+Quoting follows the rest of the chart: host, path, pathType, ingressClassName
+and the backend service name are strings in the Kubernetes API, and a bare
+scalar such as y, no, on, or 010 is resolved by the YAML parser to a boolean or
+a number that the API server then rejects. The backend port number is an
+integer in the API and stays unquoted.
+
+A rule whose host is empty is rendered without a host field, which is how an
+Ingress rule is told to match every incoming host. That is the chart default
+and what k8s/ingress.yaml does today.
+*/}}
+{{/*
+Annotation precedence. The computed annotations are collected into a fresh $ann
+dict first, then every entry of the operator's ingress.annotations is written
+over it with an unconditional set, so an operator-supplied key always wins
+(Requirement 8.11) - including when its value is the empty string, which is a
+legal annotation value in the Kubernetes API.
+
+The overwrite is an explicit range + set rather than sprig's merge on purpose.
+merge is mergo.Merge without WithOverride: it fills EMPTY destination values
+from the source, and an empty string counts as empty, so a merge-based rule
+silently loses an operator entry whose value is "". set has no such semantics -
+it replaces whatever key is already there.
+
+$ann starts as a new dict and set only ever touches it, so .Values is never
+mutated and nothing leaks between template invocations. default dict covers an
+operator who nulls the whole mapping out.
+
+With config.preservePath true nothing computes rewrite-target, so that key
+appears only if the operator put it in ingress.annotations (Requirement 8.13).
+The two default proxy timeouts reach the template inside ingress.annotations,
+so they arrive through the loop below like any other operator entry
+(Requirement 8.7).
+*/}}
+{{- $ann := dict -}}
+{{- if .Values.ingress.websocket.affinity -}}
+  {{- $_ := set $ann "nginx.ingress.kubernetes.io/affinity" "cookie" -}}
+  {{- $cookie := .Values.ingress.websocket.cookieName | default (include "scrum-poker.fullname" .) -}}
+  {{- $_ := set $ann "nginx.ingress.kubernetes.io/session-cookie-name" $cookie -}}
+{{- end -}}
+{{- if not .Values.config.preservePath -}}
+  {{- $_ := set $ann "nginx.ingress.kubernetes.io/rewrite-target" "/" -}}
+{{- end -}}
+{{- range $k, $v := (.Values.ingress.annotations | default dict) -}}
+  {{- $_ := set $ann $k $v -}}
+{{- end -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "scrum-poker.fullname" . | quote }}
+  labels:
+    {{- include "scrum-poker.labels" . | nindent 4 }}
+  {{/*
+  range over a map iterates keys in sorted order, so the rendered block is
+  byte-stable across runs. Annotation values are strings in the Kubernetes API
+  and are quoted, because YAML 1.1 resolves a bare 3600, true or no to a number
+  or a boolean that the API server then rejects. Keys stay plain.
+  */}}
+  {{- if $ann }}
+  annotations:
+    {{- range $k, $v := $ann }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{/*
+  Emitted under with, so an empty className omits the field entirely and the
+  cluster's default IngressClass applies.
+  */}}
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{/*
+  toYaml passes each tls entry through unchanged, preserving entry order and
+  each entry's secretName and hosts list.
+  */}}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - {{- if .host }}
+      host: {{ .host | quote }}
+      {{- end }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType | default "Prefix" | quote }}
+            backend:
+              service:
+                name: {{ include "scrum-poker.fullname" $ | quote }}
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

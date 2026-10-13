@@ -24,6 +24,8 @@ cd client && npm test
 docker build -t scrum-poker .
 ```
 
+> Cutting a release? The git tag `vX.Y.Z` is the source of truth and `helm/scrum-poker/Chart.yaml` must be bumped to match in the same commit — see [.github/instructions/release-versioning.instructions.md](.github/instructions/release-versioning.instructions.md) for the full checklist.
+
 ## Project Layout
 
 | Path | Purpose |

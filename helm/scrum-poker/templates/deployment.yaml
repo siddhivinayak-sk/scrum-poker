@@ -1,0 +1,303 @@
+{{- include "scrum-poker.validate" . -}}
+{{/*
+Exactly one apps/v1 Deployment with exactly one container named scrum-poker.
+
+strategy.type is Recreate by default and emits no rollingUpdate block: poker
+and retro session state lives in the memory of a single Node.js process, so an
+upgrade must replace the session holder rather than briefly run two of them.
+
+selector.matchLabels and template.metadata.labels both come from
+scrum-poker.selectorLabels, which carries only name and instance. The selector
+is immutable after creation, so a version-derived label there would make every
+appVersion bump an un-upgradeable release.
+
+The container port is named http. The Service targetPort and both probe ports
+reference that name, so changing service.targetPort never desynchronises them.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{/*
+  Quoted: a fullnameOverride of y, n, no, on, or 010 would otherwise render a
+  bare scalar that the YAML parser resolves to a boolean or a number, and
+  metadata.name is a string in the Kubernetes API.
+  */}}
+  name: {{ include "scrum-poker.fullname" . | quote }}
+  labels: {{- include "scrum-poker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ (default (dict) .Values.deploymentStrategy).type | default "Recreate" | quote }}
+  selector:
+    matchLabels: {{- include "scrum-poker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{/*
+      checksum/config hashes the ConfigMap's complete rendered bytes - name,
+      labels, and all four data keys - so a config change rolls the pod.
+
+      The Secret is deliberately excluded. scrum-poker.jwtSecret falls back to
+      randAlphaNum whenever lookup finds no live Secret, so hashing the Secret
+      would change the annotation on every render and roll the pod on an
+      upgrade that changed nothing.
+      */}}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{/*
+        podAnnotations merges in under the existing annotations key rather
+        than opening a second one: two annotations keys in the same mapping
+        is invalid YAML, and the later would silently win on a lenient
+        parser. An empty or absent mapping adds nothing, leaving the
+        checksum as the only annotation.
+        */}}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels: {{- include "scrum-poker.selectorLabels" . | nindent 8 }}
+    spec:
+      {{/*
+      Registry pull credentials, rendered wholesale so toYaml reproduces the
+      supplied entry count and order exactly. An empty list omits the key
+      instead of emitting `imagePullSecrets: []`, which the API server stores
+      and surfaces on every subsequent read.
+      */}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "scrum-poker.serviceAccountName" . | quote }}
+      {{/*
+      readOnlyRootFilesystem is resolved once, here, and the single resulting
+      variable gates both the tmp volume below and its volumeMount inside the
+      container. The two sit in different parts of the Pod specification but
+      must never appear apart: a read-only root filesystem without a writable
+      /tmp crash-loops the Node.js process with EROFS, and a volume with no
+      mount is dead weight. One condition, evaluated once, makes that
+      structurally impossible.
+
+      securityContext is defaulted to an empty dict before the field lookup:
+      an operator who writes `securityContext:` with nothing under it leaves
+      the key nil, and a field lookup on nil aborts the render.
+      */}}
+      {{- $readOnlyRoot := (.Values.securityContext | default dict).readOnlyRootFilesystem }}
+      {{/*
+      Pod-level security context, rendered wholesale from podSecurityContext.
+      The with block omits the field entirely for an empty or absent mapping,
+      rather than emitting `securityContext: {}` or a null.
+      */}}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: scrum-poker
+          {{/*
+          Every string-typed scalar below is piped through quote for the
+          reason given on secretKeyRef further down: these are strings in the
+          Kubernetes API, and an operator value such as y or 010 renders as a
+          bare YAML scalar that the parser resolves to a boolean or a number.
+          quote also escapes, so a repository or tag containing a quote or a
+          backslash cannot break out of the image string.
+
+          containerPort is deliberately left unquoted: it is an integer in the
+          API and a quoted value would be rejected.
+          */}}
+          image: {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          ports:
+            - name: "http"
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          {{/*
+          The ConfigMap is the base environment layer, so envFrom precedes
+          env: Kubernetes resolves env after envFrom, which means an extraEnv
+          entry whose name matches a ConfigMap key wins.
+          */}}
+          envFrom:
+            - configMapRef:
+                name: {{ include "scrum-poker.configMapName" . | quote }}
+          {{/*
+          env always carries JWT_SECRET: secretKeyRef is only expressible
+          inside env, so this list is never absent. With extraEnv empty it
+          holds exactly this one entry.
+
+          The whole Secret is deliberately not delivered through
+          envFrom.secretRef, which would leak every future Secret key into
+          the container environment.
+          */}}
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.auth.existingSecret }}
+                  {{/*
+                  Both fields are quoted. secretKeyRef.name and .key are
+                  strings in the Kubernetes API, but an unquoted render of an
+                  operator value such as y, n, no, on, true, or 010 is read
+                  back by the YAML parser as a boolean or a number, and the
+                  API server rejects it with "cannot unmarshal bool into Go
+                  struct field SecretKeySelector.key of type string".
+                  */}}
+                  name: {{ .Values.auth.existingSecret | quote }}
+                  key: {{ default "JWT_SECRET" .Values.auth.existingSecretKey | quote }}
+                  {{- else }}
+                  name: {{ include "scrum-poker.secretName" . | quote }}
+                  key: "JWT_SECRET"
+                  {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{/*
+          Both probes hit /api/health as a template literal. This is correct
+          against the application, not merely convenient: server.ts registers
+          app.get('/api/health', ...) on the root app before mounting
+          appRouter at PUBLIC_PATH, so the endpoint answers at that fixed
+          location for every BASE_PATH value. Interpolating config.basePath
+          here would break the probe on any non-root deployment.
+
+          port references the container port by name, so changing
+          service.targetPort never desynchronises the probes from the port.
+          It is quoted because httpGet.port accepts a name or a number and a
+          bare name such as y or on would be read back as a boolean.
+
+          Each field reads its own identically named value, so overriding one
+          leaves the other four at their defaults. The five integer fields
+          stay unquoted: they are integers in the Kubernetes API.
+
+          The two probes are wrapped independently, so disabling one leaves
+          the other exactly as configured.
+          */}}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: "/api/health"
+              port: "http"
+              scheme: "HTTP"
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: "/api/health"
+              port: "http"
+              scheme: "HTTP"
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{/*
+          resources is rendered leaf by leaf instead of with one toYaml, so
+          the omission rules compose: a resources mapping that carries no
+          quantity drops the field entirely and cluster defaults apply, while
+          a mapping that carries only requests.cpu drops just the three leaves
+          it omits rather than rendering them empty.
+
+          Every gate here tests leaf *content*, never the presence of a parent
+          mapping. That distinction is operator-reachable: nulling the four
+          quantities out, as in
+
+            resources:
+              requests: { cpu: null, memory: null }
+              limits:   { cpu: null, memory: null }
+
+          leaves coalesce with resources = {requests: {}, limits: {}} - a
+          two-key mapping that is perfectly truthy. Gating on the mapping
+          would emit a bare `resources:` whose value parses back as null, and
+          gating `requests:` on its own mapping would leave a bare parent key
+          the same way. Setting the leaves to "" instead reaches the same
+          state. So resources renders only when at least one of the four
+          quantities holds a non-empty value, and each block renders only when
+          at least one of its own two leaves does.
+
+          The three mappings are defaulted to dict before any field lookup: an
+          operator who writes `resources:` with nothing under it leaves the key
+          nil, and a field lookup on nil aborts the render.
+
+          Each leaf is quoted because these are quantity strings in the
+          Kubernetes API. Unquoted, a plain `memory: 1` is read back as a
+          number and a value such as 1e3 as a float, neither of which is a
+          valid quantity.
+          */}}
+          {{- $resources := .Values.resources | default dict }}
+          {{- $requests := $resources.requests | default dict }}
+          {{- $limits := $resources.limits | default dict }}
+          {{- $requestsCpu := $requests.cpu }}
+          {{- $requestsMemory := $requests.memory }}
+          {{- $limitsCpu := $limits.cpu }}
+          {{- $limitsMemory := $limits.memory }}
+          {{- $hasRequests := or $requestsCpu $requestsMemory }}
+          {{- $hasLimits := or $limitsCpu $limitsMemory }}
+          {{- if or $hasRequests $hasLimits }}
+          resources:
+            {{- if $hasRequests }}
+            requests:
+              {{- with $requestsCpu }}
+              cpu: {{ . | quote }}
+              {{- end }}
+              {{- with $requestsMemory }}
+              memory: {{ . | quote }}
+              {{- end }}
+            {{- end }}
+            {{- if $hasLimits }}
+            limits:
+              {{- with $limitsCpu }}
+              cpu: {{ . | quote }}
+              {{- end }}
+              {{- with $limitsMemory }}
+              memory: {{ . | quote }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{/*
+          Container-level security context, rendered wholesale so an operator
+          can supply fields this chart never names. An empty or absent
+          mapping omits the field instead of emitting {} or a null.
+          */}}
+          {{- with .Values.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $readOnlyRoot }}
+          volumeMounts:
+            - name: "tmp"
+              mountPath: "/tmp"
+          {{- end }}
+      {{- if $readOnlyRoot }}
+      {{/*
+      The scratch volume that makes readOnlyRootFilesystem survivable. Its
+      sizeLimit is quoted for the same reason the resource leaves are, and is
+      itself omitted when no value is supplied, which leaves the emptyDir
+      unbounded rather than rendering an invalid empty quantity.
+      */}}
+      volumes:
+        - name: "tmp"
+          emptyDir:
+            {{- with (.Values.tmpVolume | default dict).sizeLimit }}
+            sizeLimit: {{ . | quote }}
+            {{- end }}
+      {{- end }}
+      {{/*
+      Scheduling constraints, each rendered wholesale from its own value and
+      each independently omitted. toYaml passes the operator's structure
+      through untouched, so a nodeSelector label, a toleration's operator and
+      effect, or a nested affinity term this chart never names all survive
+      verbatim - and for the tolerations list, with its count and order
+      intact.
+
+      Every block is a `with`, not an `if`: an empty mapping or list must
+      leave the key out altogether. `nodeSelector: {}` and `affinity: null`
+      are both accepted by the API server and then persisted, which makes a
+      diff against the live object noisier than the chart's own defaults.
+      */}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

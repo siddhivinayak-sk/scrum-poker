@@ -1,0 +1,17 @@
+# Artifact Hub repository metadata for the scrum-poker chart.
+# Schema: https://github.com/artifacthub/hub/blob/master/docs/metadata/artifacthub-repo.yml
+#
+# This file enables the Verified publisher badge and the ownership claim. Artifact Hub does
+# not read it from this path: it must be delivered to whichever repository you registered.
+#   GitHub Pages repo -> commit it to the root of the gh-pages branch, beside index.yaml.
+#   GHCR (OCI) repo   -> push it under the special artifacthub.io tag with oras; see the
+#                        "Publishing the chart" section of the root README.md.
+#
+# repositoryID is a PLACEHOLDER. Replace it with the ID shown on this repository's card in
+# the Artifact Hub control panel (https://artifacthub.io/control-panel/repositories) after
+# adding the repository. Leave the placeholder until then rather than guessing a value.
+repositoryID: REPLACE_WITH_ARTIFACT_HUB_REPOSITORY_ID
+owners:
+  - name: siddhivinayak-sk
+    # Must match the email on the Artifact Hub account that claims ownership.
+    email: REPLACE_WITH_ARTIFACT_HUB_ACCOUNT_EMAIL

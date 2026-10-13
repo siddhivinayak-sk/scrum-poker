@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "scrum-poker chart values",
+  "description": "Layer 1 validation: types, enumerated sets, numeric bounds, string lengths, required keys, and the config.basePath leading-slash pattern. Cross-field semantics live in the scrum-poker.validate template guards. additionalProperties is deliberately NOT false at the top level so umbrella-chart values and global blocks keep working.",
+  "type": "object",
+  "required": ["image", "service", "config", "replicaCount"],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1, "maxLength": 253 },
+        "tag": { "type": "string", "maxLength": 128 },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": {
+      "type": ["array", "null"]
+    },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string", "maxLength": 253 },
+        "annotations": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "podAnnotations": { "type": ["object", "null"], "additionalProperties": true },
+    "podSecurityContext": { "type": ["object", "null"], "additionalProperties": true },
+    "securityContext": {
+      "$comment": "null is the state an operator reaches by writing the key with nothing indented under it; the templates guard the nil lookup.",
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "properties": {
+        "runAsNonRoot": { "type": "boolean" },
+        "runAsUser": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "allowPrivilegeEscalation": { "type": "boolean" },
+        "readOnlyRootFilesystem": { "type": "boolean" }
+      }
+    },
+    "tmpVolume": {
+      "type": "object",
+      "properties": {
+        "sizeLimit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "targetPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "nodePort": {
+          "type": ["integer", "null"],
+          "minimum": 30000,
+          "maximum": 32767
+        },
+        "sessionAffinity": { "type": "string", "enum": ["ClientIP", "None", ""] },
+        "sessionAffinityTimeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "annotations": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "deploymentStrategy": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string", "maxLength": 253 },
+        "annotations": { "type": ["object", "null"], "additionalProperties": true },
+        "hosts": { "type": ["array", "null"] },
+        "tls": { "type": ["array", "null"] },
+        "websocket": {
+          "type": "object",
+          "properties": {
+            "affinity": { "type": "boolean" },
+            "cookieName": { "type": "string", "maxLength": 253 }
+          }
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "nodeEnv": { "type": "string", "enum": ["production", "development"] },
+        "basePath": { "type": "string", "maxLength": 64, "pattern": "^$|^/" },
+        "preservePath": { "type": "boolean" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "jwtSecret": { "type": "string", "maxLength": 256 },
+        "existingSecret": { "type": "string", "maxLength": 253 },
+        "existingSecretKey": { "type": "string", "maxLength": 253 }
+      }
+    },
+    "extraEnv": {
+      "$comment": "additionalProperties stays open so an entry using valueFrom survives; the non-empty name rule is guard 8.",
+      "type": ["array", "null"],
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "resources": {
+      "$comment": "Every block and leaf is nullable: an operator nulls a leaf to drop it, and the templates omit any leaf that carries no value.",
+      "type": ["object", "null"],
+      "properties": {
+        "requests": {
+          "type": ["object", "null"],
+          "properties": {
+            "cpu": { "type": ["string", "null"] },
+            "memory": { "type": ["string", "null"] }
+          }
+        },
+        "limits": {
+          "type": ["object", "null"],
+          "properties": {
+            "cpu": { "type": ["string", "null"] },
+            "memory": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "readinessProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "initialDelaySeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "periodSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "successThreshold": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 3600 }
+      }
+    },
+    "livenessProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "initialDelaySeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "periodSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "successThreshold": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 3600 }
+      }
+    },
+    "nodeSelector": { "type": ["object", "null"], "additionalProperties": true },
+    "tolerations": { "type": ["array", "null"] },
+    "affinity": { "type": ["object", "null"], "additionalProperties": true },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}

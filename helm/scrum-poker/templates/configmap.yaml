@@ -1,0 +1,18 @@
+{{- include "scrum-poker.validate" . -}}
+{{/*
+Exactly four data keys, every value piped through quote. Kubernetes rejects a
+ConfigMap whose data value is not a string, so quote on the integer 3000 yields
+"3000" and on the boolean yields "true"/"false". An empty config.basePath
+yields a present key with the value "", which server.ts reads as
+rawBasePath = '' and serves the application at the cluster root.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "scrum-poker.configMapName" . }}
+  labels: {{- include "scrum-poker.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.service.targetPort | quote }}
+  NODE_ENV: {{ .Values.config.nodeEnv | quote }}
+  BASE_PATH: {{ .Values.config.basePath | quote }}
+  PRESERVE_PATH: {{ .Values.config.preservePath | quote }}
