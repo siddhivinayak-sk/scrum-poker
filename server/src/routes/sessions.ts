@@ -194,7 +194,23 @@ sessionsRouter.put('/:sessionId/config', (req: Request, res: Response) => {
     return;
   }
 
-  const updatedConfig = session.updateConfig(req.body.config ?? {});
+  const incoming = req.body.config ?? {};
+
+  // funCallouts is owner-only (R6.10) and must be a boolean (R6.13). The guard
+  // rejects the whole request: no state change, no broadcast, error to the
+  // submitter only. A request without the key takes the path it always did.
+  if (Object.prototype.hasOwnProperty.call(incoming, 'funCallouts')) {
+    if (!isOwner) {
+      res.status(403).json({ error: 'FORBIDDEN', setting: 'funCallouts' });
+      return;
+    }
+    if (typeof incoming.funCallouts !== 'boolean') {
+      res.status(400).json({ error: 'INVALID_SETTING', setting: 'funCallouts' });
+      return;
+    }
+  }
+
+  const updatedConfig = session.updateConfig(incoming);
 
   // Broadcast config update to all participants in the session
   broadcastConfigUpdate(sessionId, updatedConfig);

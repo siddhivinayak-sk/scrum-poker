@@ -11,8 +11,8 @@ raw manifests under [`k8s/`](../../k8s) — see
 | | |
 |---|---|
 | Chart name | `scrum-poker` |
-| Chart version | `0.0.7` |
-| App version | `0.0.7` |
+| Chart version | `0.0.8` |
+| App version | `0.0.8` |
 | Default image | `siddhivinayaksk/scrum-pocker` |
 | Chart repo (HTTP) | `https://siddhivinayak-sk.github.io/scrum-poker` |
 | Chart repo (OCI) | `oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker` |
@@ -20,8 +20,8 @@ raw manifests under [`k8s/`](../../k8s) — see
 The chart version and the app version always move together: the git tag `vX.Y.Z` is
 the single source of truth for a release and `Chart.yaml` carries the same `X.Y.Z` in
 both `version` and `appVersion` in the tagged commit. `image.tag` defaults to empty and
-falls back to `appVersion`, so a default install of chart `0.0.7` pulls
-`siddhivinayaksk/scrum-pocker:0.0.7`. The Docker Hub repository name keeps the
+falls back to `appVersion`, so a default install of chart `0.0.8` pulls
+`siddhivinayaksk/scrum-pocker:0.0.8`. The Docker Hub repository name keeps the
 `pocker` misspelling; the chart name does not.
 
 ## Requirements
@@ -96,10 +96,10 @@ helm install my-release scrum-poker/scrum-poker \
 
 ```
 NAME                    CHART VERSION  APP VERSION  DESCRIPTION
-scrum-poker/scrum-poker 0.0.7          0.0.7        Real-time collaborative planning poker and spri...
+scrum-poker/scrum-poker 0.0.8          0.0.8        Real-time collaborative planning poker and spri...
 ```
 
-Add `--version 0.0.7` to `helm install` to pin a version instead of taking the newest
+Add `--version 0.0.8` to `helm install` to pin a version instead of taking the newest
 one the index lists.
 
 Two things about this repository are worth knowing before you debug it:
@@ -121,15 +121,15 @@ which makes the full chart reference `oci://ghcr.io/siddhivinayak-sk/charts/scru
 
 ```bash
 helm install my-release oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.7 \
+  --version 0.0.8 \
   --namespace scrum-poker \
   --create-namespace
 ```
 
 `--version` is not optional here. An OCI reference has no index to search, so Helm
-needs the exact tag; `0.0.7` is the current chart version. Inspect a version before
+needs the exact tag; `0.0.8` is the current chart version. Inspect a version before
 installing it with
-`helm show chart oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.7`.
+`helm show chart oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.8`.
 
 **GHCR packages are private until someone makes them public.** The chart package is
 public today — an anonymous `helm show chart` against it succeeds — but a `403` or
@@ -275,19 +275,19 @@ square brackets are glob characters.
 ### Pinning an image tag
 
 `image.tag` is empty by default and falls back to `appVersion`, which for chart
-`0.0.7` means `siddhivinayaksk/scrum-pocker:0.0.7`. Pin it explicitly to deploy a
+`0.0.8` means `siddhivinayaksk/scrum-pocker:0.0.8`. Pin it explicitly to deploy a
 different build — `build-and-push.yml` publishes `X.Y.Z`, `X.Y` and `latest`:
 
 ```bash
 helm install my-release scrum-poker/scrum-poker \
   --namespace scrum-poker --create-namespace \
-  --set image.tag=0.0.7
+  --set image.tag=0.0.8
 ```
 
 ```yaml
 image:
   repository: siddhivinayaksk/scrum-pocker
-  tag: "0.0.7"
+  tag: "0.0.8"
   pullPolicy: IfNotPresent
 ```
 
@@ -669,7 +669,7 @@ against a stale cached index:
 helm repo update
 helm upgrade my-release scrum-poker/scrum-poker \
   --namespace scrum-poker \
-  --version 0.0.7
+  --version 0.0.8
 ```
 
 From the OCI registry:
@@ -677,7 +677,7 @@ From the OCI registry:
 ```bash
 helm upgrade my-release oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
   --namespace scrum-poker \
-  --version 0.0.7
+  --version 0.0.8
 ```
 
 From a local clone:
@@ -783,7 +783,7 @@ is the cause. Log in with a GitHub personal access token that has `read:packages
 
 ```bash
 echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username <your-github-username> --password-stdin
-helm pull oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.7
+helm pull oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.8
 ```
 
 A stored credential that has expired produces the same error, so

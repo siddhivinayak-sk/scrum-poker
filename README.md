@@ -597,7 +597,7 @@ The Docker image is available on Docker Hub: [siddhivinayaksk/scrum-pocker](http
 docker pull siddhivinayaksk/scrum-pocker:latest
 
 # Or pull a specific version
-docker pull siddhivinayaksk/scrum-pocker:0.0.7
+docker pull siddhivinayaksk/scrum-pocker:0.0.8
 ```
 
 ```bash
@@ -623,7 +623,7 @@ with one row per configurable key, is in [`helm/scrum-poker/README.md`](helm/scr
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.7 \
+  --version 0.0.8 \
   --namespace scrum-poker \
   --create-namespace
 ```
@@ -650,9 +650,9 @@ square brackets glob:
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.7 \
+  --version 0.0.8 \
   --namespace scrum-poker --create-namespace \
-  --set image.tag=0.0.7 \
+  --set image.tag=0.0.8 \
   --set ingress.hosts[0].host=poker.example.com \
   --set ingress.hosts[0].paths[0].path=/scrum-poker \
   --set config.basePath=/scrum-poker
@@ -666,7 +666,7 @@ replicaCount: 1                       # 1 is the only supported value, see the n
 
 image:
   repository: siddhivinayaksk/scrum-pocker
-  tag: "0.0.7"                        # "" falls back to the chart's appVersion
+  tag: "0.0.8"                        # "" falls back to the chart's appVersion
   pullPolicy: IfNotPresent
 
 service:
@@ -708,7 +708,7 @@ resources:
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.7 \
+  --version 0.0.8 \
   --namespace scrum-poker --create-namespace \
   -f my-values.yaml
 ```
@@ -767,7 +767,7 @@ The values overridden most often, with the real defaults from
   `service.sessionAffinity: ClientIP`. Multi-replica is therefore permitted by the chart but
   operationally wrong. `autoscaling.enabled` **is** blocked and must stay `false`:
   `autoscaling.enabled: must be false (got true); the application holds poker and retro session state in process memory and supports exactly one replica`.
-- Render before installing. `helm template scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.7 -f my-values.yaml`
+- Render before installing. `helm template scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.8 -f my-values.yaml`
   exercises the same schema and guards offline.
 
 #### Publishing the chart

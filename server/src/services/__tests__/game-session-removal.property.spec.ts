@@ -1,5 +1,5 @@
 import * as fc from 'fast-check';
-import { DEFAULT_SESSION_CONFIG, CardValue, FIBONACCI_SEQUENCE } from '../../../../shared/types';
+import { DEFAULT_SESSION_CONFIG, CardValue, ExtendedCardValue, FIBONACCI_SEQUENCE } from '../../../../shared/types';
 import { GameSession } from '../game-session';
 
 /**
@@ -97,7 +97,7 @@ describe('Property 2: Participant removal discards selection and removes from li
             .map((p) => p.id);
 
           // Record other participants' selections before removal
-          const otherSelections = new Map<string, CardValue>();
+          const otherSelections = new Map<string, ExtendedCardValue>();
           const currentRound = session.getCurrentRound()!;
           for (const otherId of otherParticipantIds) {
             if (currentRound.selections.has(otherId)) {

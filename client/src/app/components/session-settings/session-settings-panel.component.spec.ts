@@ -599,4 +599,206 @@ describe('SessionSettingsPanelComponent', () => {
       expect(checkbox).toBeTruthy();
     });
   });
+
+  describe('funCallouts setting (owner-only)', () => {
+    const PUT_URL = '/api/sessions/test-session-123/config';
+
+    /** Opens the panel and advanced settings with an explicit isGameOwner value. */
+    function setupWithOwnership(
+      isGameOwner: boolean,
+      config: SessionConfiguration = defaultConfig,
+      isOwner = true
+    ): void {
+      fixture.componentRef.setInput('sessionId', 'test-session-123');
+      fixture.componentRef.setInput('config', config);
+      fixture.componentRef.setInput('isOwner', isOwner);
+      fixture.componentRef.setInput('isGameOwner', isGameOwner);
+      fixture.detectChanges();
+      component.togglePanel();
+      fixture.detectChanges();
+      component.toggleAdvanced();
+      fixture.detectChanges();
+    }
+
+    function getCheckbox(): HTMLInputElement | null {
+      return fixture.nativeElement.querySelector('#settings-funCallouts');
+    }
+
+    it('should render the funCallouts checkbox for the game owner', () => {
+      setupWithOwnership(true);
+
+      const checkbox = getCheckbox();
+      expect(checkbox).toBeTruthy();
+      expect(checkbox?.type).toBe('checkbox');
+      expect(checkbox?.closest('fieldset')?.querySelector('legend')?.textContent?.trim()).toBe(
+        'Additional Options'
+      );
+    });
+
+    it('should not render the funCallouts checkbox for a non-owner moderator', () => {
+      setupWithOwnership(false);
+
+      expect(getCheckbox()).toBeNull();
+      // The panel itself and the other toggles are still available to the moderator
+      expect(
+        fixture.nativeElement.querySelector('input[type="checkbox"][formControlName="autoReveal"]')
+      ).toBeTruthy();
+    });
+
+    it('should not render the funCallouts checkbox when isGameOwner is left at its default', () => {
+      setupWithAdvanced();
+
+      expect(getCheckbox()).toBeNull();
+    });
+
+    it('should default the checkbox to checked when config omits funCallouts', () => {
+      setupWithOwnership(true);
+
+      expect(getCheckbox()?.checked).toBe(true);
+      expect(component.settingsForm.get('funCallouts')?.value).toBe(true);
+    });
+
+    it('should reflect funCallouts false from config', () => {
+      setupWithOwnership(true, { ...defaultConfig, funCallouts: false });
+
+      expect(getCheckbox()?.checked).toBe(false);
+      expect(component.settingsForm.get('funCallouts')?.value).toBe(false);
+    });
+
+    it('should send funCallouts in the PUT body when the game owner edits a field', () => {
+      setupWithOwnership(true);
+
+      component.settingsForm.get('funCallouts')?.setValue(false);
+      component.onFieldChange();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body.config.funCallouts).toBe(false);
+
+      req.flush({ config: { ...defaultConfig, funCallouts: false } });
+    });
+
+    it('should send funCallouts true by default when the game owner edits another field', () => {
+      setupWithOwnership(true);
+
+      component.settingsForm.get('autoReveal')?.setValue(true);
+      component.onFieldChange();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(req.request.body.config.funCallouts).toBe(true);
+      expect(req.request.body.config.autoReveal).toBe(true);
+
+      req.flush({ config: { ...defaultConfig, autoReveal: true, funCallouts: true } });
+    });
+
+    it('should send the new funCallouts value when the owner clicks the checkbox', () => {
+      setupWithOwnership(true);
+
+      const checkbox = getCheckbox() as HTMLInputElement;
+      checkbox.click();
+      fixture.detectChanges();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(req.request.body.config.funCallouts).toBe(false);
+
+      req.flush({ config: { ...defaultConfig, funCallouts: false } });
+    });
+
+    it('should omit the funCallouts key from the PUT body for a non-owner moderator', () => {
+      setupWithOwnership(false);
+
+      component.settingsForm.get('autoReveal')?.setValue(true);
+      component.onFieldChange();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(Object.prototype.hasOwnProperty.call(req.request.body.config, 'funCallouts')).toBe(false);
+
+      req.flush({ config: { ...defaultConfig, autoReveal: true } });
+    });
+
+    it('should omit funCallouts even when the config carries funCallouts false for a non-owner moderator', () => {
+      setupWithOwnership(false, { ...defaultConfig, funCallouts: false });
+
+      component.settingsForm.get('countdownAnimation')?.setValue(false);
+      component.onFieldChange();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(Object.prototype.hasOwnProperty.call(req.request.body.config, 'funCallouts')).toBe(false);
+
+      req.flush({ config: { ...defaultConfig, countdownAnimation: false, funCallouts: false } });
+    });
+
+    it('should still send every other field for a non-owner moderator', () => {
+      const config: SessionConfiguration = {
+        ...defaultConfig,
+        revealPermission: { mode: 'select-specific', allowedUserIds: ['user-a'] },
+      };
+      setupWithOwnership(false, config);
+
+      component.settingsForm.get('votingSystem')?.setValue('power-of-2');
+      component.settingsForm.get('issuePermission')?.setValue('all-players');
+      component.settingsForm.get('autoReveal')?.setValue(true);
+      component.settingsForm.get('countdownAnimation')?.setValue(false);
+      component.onFieldChange();
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(req.request.body.config).toEqual({
+        votingSystem: 'power-of-2',
+        revealPermission: { mode: 'select-specific', allowedUserIds: ['user-a'] },
+        issuePermission: { mode: 'all-players', allowedUserIds: [] },
+        autoReveal: true,
+        countdownAnimation: false,
+      });
+
+      req.flush({ config: { ...config, votingSystem: 'power-of-2' } });
+    });
+
+    it('should update only the funCallouts control when the checkbox is toggled', () => {
+      const config: SessionConfiguration = {
+        votingSystem: 'modified-fibonacci',
+        revealPermission: { mode: 'all-players', allowedUserIds: [] },
+        issuePermission: { mode: 'select-specific', allowedUserIds: ['user-1'] },
+        autoReveal: true,
+        countdownAnimation: false,
+        funCallouts: true,
+      };
+      setupWithOwnership(true, config);
+      const before = { ...component.settingsForm.value };
+
+      const checkbox = getCheckbox() as HTMLInputElement;
+      checkbox.click();
+      fixture.detectChanges();
+
+      expect(component.settingsForm.value).toEqual({ ...before, funCallouts: false });
+      expect(component.settingsForm.get('funCallouts')?.value).toBe(false);
+
+      // Flush the PUT triggered by the click so verify() stays clean
+      httpTesting.expectOne(PUT_URL).flush({ config: { ...config, funCallouts: false } });
+    });
+
+    it('should leave funCallouts untouched when another control changes', () => {
+      setupWithOwnership(true, { ...defaultConfig, funCallouts: false });
+
+      component.settingsForm.get('autoReveal')?.setValue(true);
+      component.onFieldChange();
+
+      expect(component.settingsForm.get('funCallouts')?.value).toBe(false);
+      expect(getCheckbox()?.checked).toBe(false);
+
+      const req = httpTesting.expectOne(PUT_URL);
+      expect(req.request.body.config.funCallouts).toBe(false);
+      req.flush({ config: { ...defaultConfig, autoReveal: true, funCallouts: false } });
+    });
+
+    it('should sync the checkbox when a broadcast config changes funCallouts', () => {
+      setupWithOwnership(true);
+      expect(getCheckbox()?.checked).toBe(true);
+
+      fixture.componentRef.setInput('config', { ...defaultConfig, funCallouts: false });
+      fixture.detectChanges();
+
+      expect(component.settingsForm.get('funCallouts')?.value).toBe(false);
+      expect(getCheckbox()?.checked).toBe(false);
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { SessionConfiguration } from '../../../shared/types';
+import { SessionConfiguration, resolveFunCallouts } from '../../../shared/types';
 import { GameSession } from './game-session';
 
 /**
@@ -51,7 +51,13 @@ export class SessionRegistry {
    */
   createSession(ownerId: string, config: SessionConfiguration): GameSessionInfo {
     const sessionId = generateSessionId(this.sessions);
-    const session = new GameSession(sessionId, ownerId, config);
+    // Normalise once at creation so the stored config, and therefore every
+    // getSessionState() and session:config-updated broadcast, carries a real
+    // boolean for funCallouts (R6.6, R6.11).
+    const session = new GameSession(sessionId, ownerId, {
+      ...config,
+      funCallouts: resolveFunCallouts(config.funCallouts),
+    });
     this.sessions.set(sessionId, session);
 
     console.log(`Session created: ${sessionId} by owner ${ownerId}`);

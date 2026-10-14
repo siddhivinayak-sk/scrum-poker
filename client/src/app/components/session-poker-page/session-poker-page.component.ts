@@ -16,6 +16,8 @@ import { ConsensusIndicatorComponent } from '../consensus-indicator/consensus-in
 import { FacilitatorFlowComponent } from '../facilitator-flow/facilitator-flow.component';
 import { IssueListPanelComponent } from '../issue-list-panel/issue-list-panel.component';
 import { ConnectionStatusComponent } from '../connection-status/connection-status.component';
+import { VoteCalloutLayerComponent } from '../vote-callout/vote-callout-layer.component';
+import { ModeratorNoteBalloonComponent } from '../moderator-notes/moderator-note-balloon.component';
 import { ConnectionState } from '@shared/types';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
@@ -44,6 +46,8 @@ import { EstimateExportService } from '../../services/estimate-export.service';
     FacilitatorFlowComponent,
     IssueListPanelComponent,
     ConnectionStatusComponent,
+    VoteCalloutLayerComponent,
+    ModeratorNoteBalloonComponent,
   ],
   template: `
     @if (sessionNotFound()) {
@@ -118,6 +122,7 @@ import { EstimateExportService } from '../../services/estimate-export.service';
               [sessionId]="sessionId()"
               [config]="sessionState.sessionConfig()"
               [isOwner]="isSessionOwner()"
+              [isGameOwner]="isOwner()"
             />
             <app-user-menu />
           </div>
@@ -136,7 +141,7 @@ import { EstimateExportService } from '../../services/estimate-export.service';
         <main class="session-poker-page__main">
           <!-- Each blocker wrapper sits INSIDE its scroll container, so no scrollable
                element is ever inert and the page keeps scrolling while blocked (R11.12). -->
-          <section class="session-poker-page__board-area" id="main-content">
+          <section class="session-poker-page__board-area" id="main-content" tabindex="-1">
             <div
               class="interaction-blocker"
               [attr.inert]="blocked() ? '' : null"
@@ -240,10 +245,22 @@ import { EstimateExportService } from '../../services/estimate-export.service';
           </p>
         }
 
+        <!-- Moderator-only floating balloons surfacing notes from divergent voters, so the
+             moderator sees WHY a vote diverged in the moment and can open a discussion. It is
+             position:fixed, so DOM order does not affect its placement; it is kept ahead of the
+             countdown overlay and the callout layer so the layer stays the page's last child
+             (tab order R9.4). -->
+        <app-moderator-note-balloon [sessionId]="sessionId()" />
+
         <app-countdown-overlay
           [active]="sessionState.countdownActive()"
           (onComplete)="onCountdownComplete()"
         />
+
+        <!-- Last child of the page (tab order R9.4, paint order R7.4) and outside every
+             .interaction-blocker wrapper, so a paused connection never makes a visible
+             callout inert (R11.12). Rendered only in this session-found branch (R11.11). -->
+        <app-vote-callout-layer [sessionId]="sessionId()" />
 
         <!-- End Session Confirmation Dialog -->
         @if (showEndSessionDialog()) {
