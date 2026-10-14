@@ -2,23 +2,39 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   User,
   VotingRound,
-  CardValue,
+  ExtendedCardValue,
   VotingMetrics,
   HistoryEntry,
   ParticipantVote,
   SessionConfiguration,
   GameSessionState,
   IssueItem,
+  CalloutNote,
+  CalloutNoteRejection,
+  NOTE_MAX_LENGTH,
   hasPermission as sharedHasPermission,
 } from '../../../shared/types';
 import { calculate } from './metrics-engine';
+
+/** Input for {@link GameSession.addCalloutNote}. */
+export interface AddCalloutNoteInput {
+  roundId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+}
+
+/** Outcome of {@link GameSession.addCalloutNote}. */
+export type AddCalloutNoteResult =
+  | { ok: true; note: CalloutNote }
+  | { ok: false; code: CalloutNoteRejection };
 
 /**
  * Result returned when cards are revealed.
  * Contains the selections map and the computed voting metrics.
  */
 export interface RevealResult {
-  selections: Map<string, CardValue>;
+  selections: Map<string, ExtendedCardValue>;
   metrics: VotingMetrics;
 }
 
@@ -151,7 +167,7 @@ export class GameSession {
    * Ignored if there is no active round or the round is already revealed.
    * Last-write-wins: selecting again replaces the previous selection.
    */
-  selectCard(userId: string, cardValue: CardValue): void {
+  selectCard(userId: string, cardValue: ExtendedCardValue): void {
     if (!this.currentRound || this.currentRound.status !== 'voting') {
       return;
     }
@@ -163,7 +179,7 @@ export class GameSession {
    * Get the current selections map.
    * Returns an empty map if no round is active.
    */
-  getSelections(): Map<string, CardValue> {
+  getSelections(): Map<string, ExtendedCardValue> {
     if (!this.currentRound) {
       return new Map();
     }
@@ -216,7 +232,7 @@ export class GameSession {
     this.votingDurationMs = revealedAt - startedAt;
     this.currentRound.votingDurationMs = this.votingDurationMs;
 
-    const metrics = calculate(this.currentRound.selections);
+    const metrics = calculate(this.currentRound.selections, this.config.votingSystem);
 
     this.touch();
 
@@ -244,7 +260,7 @@ export class GameSession {
       cardValue: this.currentRound!.selections.get(user.id) ?? null,
     }));
 
-    const metrics = calculate(this.currentRound.selections);
+    const metrics = calculate(this.currentRound.selections, this.config.votingSystem);
 
     const entry: HistoryEntry = {
       roundId: this.currentRound.id,
@@ -253,6 +269,8 @@ export class GameSession {
       metrics,
       completedAt: new Date().toISOString(),
       votingDurationMs: this.votingDurationMs,
+      // A copy, so later mutation of the round's array cannot reach the saved entry.
+      calloutNotes: this.currentRound.calloutNotes ? [...this.currentRound.calloutNotes] : undefined,
     };
 
     // Prepend to history (newest-first)
@@ -287,6 +305,48 @@ export class GameSession {
 
     // Start a fresh round with the same story
     return this.startRound(storyDescription);
+  }
+
+  /**
+   * Store a participant's optional callout note against a round (current or saved).
+   * Checks run in order: trim, empty, too long, round resolution, duplicate author.
+   * Nothing is stored when a check fails.
+   */
+  addCalloutNote(input: AddCalloutNoteInput): AddCalloutNoteResult {
+    const { roundId, authorId, authorName } = input;
+
+    const trimmed = input.text.trim();
+    if (trimmed.length === 0) {
+      return { ok: false, code: 'NOTE_EMPTY' };
+    }
+    if (trimmed.length > NOTE_MAX_LENGTH) {
+      return { ok: false, code: 'NOTE_TOO_LONG' };
+    }
+
+    const target: VotingRound | HistoryEntry | undefined =
+      this.currentRound !== null && this.currentRound.id === roundId
+        ? this.currentRound
+        : this.history.find((entry) => entry.roundId === roundId);
+    if (!target) {
+      return { ok: false, code: 'NOTE_ROUND_UNKNOWN' };
+    }
+
+    if (target.calloutNotes?.some((n) => n.authorId === authorId)) {
+      return { ok: false, code: 'NOTE_DUPLICATE' };
+    }
+
+    const note: CalloutNote = {
+      id: uuidv4(),
+      roundId,
+      authorId,
+      authorName,
+      text: trimmed,
+      storedAt: new Date().toISOString(),
+    };
+    (target.calloutNotes ??= []).push(note);
+    this.touch();
+
+    return { ok: true, note };
   }
 
   /**

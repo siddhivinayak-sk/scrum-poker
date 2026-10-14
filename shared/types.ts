@@ -21,23 +21,25 @@ export interface VotingRound {
   id: string;           // UUID
   storyDescription: string;
   status: 'voting' | 'revealed' | 'completed';
-  selections: Map<string, CardValue>;  // userId -> cardValue
+  selections: Map<string, ExtendedCardValue>;  // userId -> cardValue
   startedAt: string;    // ISO 8601
   revealedAt?: string;  // ISO 8601
   votingDurationMs?: number; // computed on reveal: revealedAt - startedAt
+  /** Optional so every existing round literal and stored record stays valid. Plain array, never a Map. */
+  calloutNotes?: CalloutNote[];
 }
 
 // Participant Vote
 export interface ParticipantVote {
   userId: string;
   displayName: string;
-  cardValue: CardValue | null;  // null = no vote
+  cardValue: ExtendedCardValue | null;  // null = no vote
 }
 
 // Voting Metrics
 export interface VotingMetrics {
   average: number | null;
-  mode: CardValue | null;
+  mode: ExtendedCardValue | null;
   spread: number | null;
   distribution: Record<string, number>;  // cardValue -> count
   outliers: string[];                     // userIds
@@ -53,6 +55,63 @@ export interface HistoryEntry {
   metrics: VotingMetrics;
   completedAt: string;  // ISO 8601
   votingDurationMs?: number; // total voting time for this round
+  /** Plain array, never a Map, so it survives JSON.stringify/parse unchanged. */
+  calloutNotes?: CalloutNote[];
+}
+
+// --- Callout Notes ---
+
+/** One short note a participant attached to a Voting_Round. */
+export interface CalloutNote {
+  id: string;            // UUID, server-assigned
+  roundId: string;       // the round the note was WRITTEN FOR, not the current one
+  authorId: string;
+  authorName: string;    // denormalised so history renders without a participant lookup
+  text: string;          // already trimmed; <= NOTE_MAX_LENGTH
+  storedAt: string;      // ISO 8601, server clock; the ordering key
+}
+
+export const NOTE_MAX_LENGTH = 280;
+
+/** Rejection codes; each maps to exactly one acceptance criterion. */
+export type CalloutNoteRejection =
+  | 'NOTE_SESSION_MISMATCH'   // R13.13
+  | 'NOTE_INVALID'            // malformed payload shape
+  | 'NOTE_EMPTY'              // R10.7
+  | 'NOTE_TOO_LONG'           // R10.6
+  | 'NOTE_ROUND_UNKNOWN'      // R10.8
+  | 'NOTE_DUPLICATE';         // R10.17
+
+export const CALLOUT_NOTE_SUBMIT = 'callout:note:submit';
+export const CALLOUT_NOTE_ADDED = 'callout:note:added';
+export const CALLOUT_NOTE_REJECTED = 'callout:note:rejected';
+
+export interface CalloutNoteSubmitPayload { sessionId: string; roundId: string; text: string; }
+export interface CalloutNoteAddedPayload { roundId: string; note: CalloutNote; }
+export interface CalloutNoteRejectedPayload {
+  roundId: string;
+  code: CalloutNoteRejection;
+  message: string;
+}
+
+/** True when the value has the shape of a CalloutNote (all six fields are strings). */
+export function isCalloutNote(value: unknown): value is CalloutNote {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v['id'] === 'string' &&
+    typeof v['roundId'] === 'string' &&
+    typeof v['authorId'] === 'string' &&
+    typeof v['authorName'] === 'string' &&
+    typeof v['text'] === 'string' &&
+    typeof v['storedAt'] === 'string'
+  );
+}
+
+/** Treats anything that is not a well-formed note array as empty (R13.12). */
+export function normaliseCalloutNotes(value: unknown): CalloutNote[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isCalloutNote);
 }
 
 // Session State (full state for sync on reconnect)
@@ -92,6 +151,85 @@ export const VOTING_SYSTEMS: Record<VotingSystemType, ExtendedCardValue[]> = {
   'power-of-2': [0, 1, 2, 4, 8, 16, 32, 64],
 };
 
+/**
+ * Card_Numeric_Value: the real number a card contributes to numeric statistics.
+ * Absence from this map means "has no Card_Numeric_Value" (specials and t-shirt sizes).
+ *
+ * A Map (not a Record) so numeric and string keys keep their identity with no coercion.
+ */
+export const CARD_NUMERIC_VALUE: ReadonlyMap<ExtendedCardValue, number> = new Map<
+  ExtendedCardValue,
+  number
+>([
+  // fibonacci (also covers the shared 0, 1, 2, 8 of the other numeric decks)
+  [0, 0], [1, 1], [2, 2], [3, 3], [5, 5], [8, 8],
+  [13, 13], [21, 21], [34, 34], [55, 55], [89, 89],
+  // power-of-2 extras
+  [4, 4], [16, 16], [32, 32], [64, 64],
+  // modified-fibonacci extras
+  ['½', 0.5], [20, 20], [40, 40], [100, 100],
+  // coffee, no-clue, break, XS, S, M, L, XL, XXL are intentionally absent
+]);
+
+/** The Card_Numeric_Value of a card, or undefined when it has none. */
+export function cardNumericValue(value: ExtendedCardValue): number | undefined {
+  return CARD_NUMERIC_VALUE.get(value);
+}
+
+/** True exactly when the card has a Card_Numeric_Value. */
+export function isNumericCard(value: ExtendedCardValue): boolean {
+  return CARD_NUMERIC_VALUE.has(value);
+}
+
+/**
+ * Builds the Card_Ladder of every voting system: the system's cards that have a
+ * Card_Numeric_Value, ascending by that value, equal mapped values collapsed.
+ * Must run after CARD_NUMERIC_VALUE and VOTING_SYSTEMS are initialised.
+ */
+export function buildCardLadders(): Record<VotingSystemType, readonly ExtendedCardValue[]> {
+  const ladders = {} as Record<VotingSystemType, readonly ExtendedCardValue[]>;
+  for (const system of Object.keys(VOTING_SYSTEMS) as VotingSystemType[]) {
+    const seen = new Set<number>();
+    const ladder: ExtendedCardValue[] = [];
+    const numericCards = VOTING_SYSTEMS[system]
+      .filter((card) => CARD_NUMERIC_VALUE.has(card))
+      .sort((a, b) => (CARD_NUMERIC_VALUE.get(a) as number) - (CARD_NUMERIC_VALUE.get(b) as number));
+    for (const card of numericCards) {
+      const mapped = CARD_NUMERIC_VALUE.get(card) as number;
+      if (seen.has(mapped)) continue;
+      seen.add(mapped);
+      ladder.push(card);
+    }
+    ladders[system] = ladder;
+  }
+  return ladders;
+}
+
+/**
+ * Card_Ladder per voting system, precomputed once at module load.
+ *   fibonacci          -> [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+ *   modified-fibonacci -> [0, '½', 1, 2, 3, 5, 8, 13, 20, 40, 100]
+ *   power-of-2         -> [0, 1, 2, 4, 8, 16, 32, 64]
+ *   t-shirt            -> []
+ */
+export const CARD_LADDERS: Readonly<Record<VotingSystemType, readonly ExtendedCardValue[]>> =
+  buildCardLadders();
+
+/** Ladder of a possibly-unknown system identifier; empty for an unknown one. */
+export function cardLadderFor(votingSystem: string): readonly ExtendedCardValue[] {
+  return Object.prototype.hasOwnProperty.call(CARD_LADDERS, votingSystem)
+    ? CARD_LADDERS[votingSystem as VotingSystemType]
+    : [];
+}
+
+/** Zero-based index of a card on a ladder, or -1 when absent. */
+export function ladderIndexOf(
+  ladder: readonly ExtendedCardValue[],
+  value: ExtendedCardValue
+): number {
+  return ladder.indexOf(value);
+}
+
 // Permission types
 export type PermissionMode = 'moderator-only' | 'all-players' | 'select-specific';
 
@@ -108,6 +246,12 @@ export interface SessionConfiguration {
   autoReveal: boolean;
   countdownAnimation: boolean;
   gameName?: string;
+  /**
+   * Controls whether the fun callouts appear in this session.
+   * Optional so configuration records that omit it stay valid; an absent or
+   * non-boolean value is treated as `true` (see `resolveFunCallouts`).
+   */
+  funCallouts?: boolean;  // default: true
 }
 
 // Default session configuration
@@ -117,7 +261,17 @@ export const DEFAULT_SESSION_CONFIG: SessionConfiguration = {
   issuePermission: { mode: 'moderator-only', allowedUserIds: [] },
   autoReveal: false,
   countdownAnimation: true,
+  funCallouts: true,
 };
+
+/**
+ * Single coercion point for the `funCallouts` default.
+ * Returns the value when it is a boolean, otherwise `true`.
+ * Deliberately separate from `resolveFluidCardHeight`: the two fields are independent.
+ */
+export function resolveFunCallouts(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : true;
+}
 
 // Issue item in the session's issue list
 export interface IssueItem {

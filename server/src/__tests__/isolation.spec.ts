@@ -328,7 +328,55 @@ const ADDED_SHARED_EXPORTS = [
   'resolveFluidCardHeight',
   'RETRO_SESSION_ENDED',
   'CONNECTION_LABEL',
+  // vote-reveal-fun-callouts
+  'CARD_NUMERIC_VALUE',
+  'cardNumericValue',
+  'isNumericCard',
+  'CARD_LADDERS',
+  'cardLadderFor',
+  'ladderIndexOf',
+  'NOTE_MAX_LENGTH',
+  'CALLOUT_NOTE_SUBMIT',
+  'CALLOUT_NOTE_ADDED',
+  'CALLOUT_NOTE_REJECTED',
+  'normaliseCalloutNotes',
+  'resolveFunCallouts',
 ] as const;
+
+/**
+ * Every symbol the vote-reveal-fun-callouts feature introduces that a retro module
+ * could conceivably reach for. Matched as whole identifiers (or, for the
+ * `callout` stem, as a case-insensitive substring so `CalloutNote`, `isCalloutNote`,
+ * `funCallouts` and the `callout:*` event names are all caught).
+ */
+const CALLOUT_SYMBOLS = [
+  'CARD_NUMERIC_VALUE',
+  'cardNumericValue',
+  'isNumericCard',
+  'CARD_LADDERS',
+  'buildCardLadders',
+  'cardLadderFor',
+  'ladderIndexOf',
+  'NOTE_MAX_LENGTH',
+  'NOTE_SESSION_MISMATCH',
+  'NOTE_INVALID',
+  'NOTE_EMPTY',
+  'NOTE_TOO_LONG',
+  'NOTE_ROUND_UNKNOWN',
+  'NOTE_DUPLICATE',
+] as const;
+
+/** Case-insensitive stem covering every Callout_Note type, event, helper and config name. */
+const CALLOUT_STEM = /callout/i;
+
+/** Names of the callout symbols present in `source`. */
+export function calloutSymbolsIn(source: string): string[] {
+  const found: string[] = CALLOUT_SYMBOLS.filter((symbol) =>
+    new RegExp(`\\b${symbol}\\b`).test(source)
+  );
+  if (CALLOUT_STEM.test(source)) found.push('callout*');
+  return found;
+}
 
 // ---------------------------------------------------------------------------
 // Module inventory for the isolation scan (R13.9)
@@ -841,6 +889,86 @@ describe('R13.9: retro and poker concerns stay isolated', () => {
         POKER_MODULES.some((pokerModule) => namesPokerModule(specifier, pokerModule))
       )
     ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Callout isolation — no retro module references any callout symbol (R13.1)
+// ---------------------------------------------------------------------------
+
+/** Every non-test `retro*` source file under `server/src`, discovered rather than listed. */
+function discoverRetroSources(dir: string = SERVER_SRC): string[] {
+  const found: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
+      found.push(...discoverRetroSources(full));
+    } else if (
+      /^retro.*\.ts$/.test(entry.name) &&
+      !/\.(test|spec)\.ts$/.test(entry.name)
+    ) {
+      found.push(path.relative(SERVER_SRC, full).split(path.sep).join('/'));
+    }
+  }
+  return found;
+}
+
+describe('R13.1: no retro module references any callout symbol', () => {
+  it('R13.1: the retro module list covers every retro source file on disk', () => {
+    const discovered = discoverRetroSources();
+    for (const module of RETRO_MODULES) {
+      expect(discovered).toContain(module);
+    }
+    expect(discovered.length).toBeGreaterThanOrEqual(RETRO_MODULES.length);
+  });
+
+  it('R13.1: no retro module mentions a callout type, event, constant or helper anywhere in its source', () => {
+    const modules = [...new Set([...RETRO_MODULES, ...discoverRetroSources()])];
+    for (const retroModule of modules) {
+      expect({ retroModule, callouts: calloutSymbolsIn(readServerModule(retroModule)) }).toEqual({
+        retroModule,
+        callouts: [],
+      });
+    }
+  });
+
+  it('R13.1: no retro module imports a callout name from shared/types', () => {
+    const modules = [...new Set([...RETRO_MODULES, ...discoverRetroSources()])];
+    for (const retroModule of modules) {
+      const source = readServerModule(retroModule);
+      const importClauses = source.match(/\bimport\b[\s\S]*?\bfrom\s*['"][^'"]+['"]/g) ?? [];
+      for (const clause of importClauses) {
+        expect({ retroModule, clause, callouts: calloutSymbolsIn(clause) }).toEqual({
+          retroModule,
+          clause,
+          callouts: [],
+        });
+      }
+    }
+  });
+
+  it('R13.1: the callout scanner is not vacuous — it flags the poker handler, which does use them', () => {
+    const pokerHandler = calloutSymbolsIn(readServerModule('websocket/handler.ts'));
+    expect(pokerHandler).toContain('callout*');
+
+    expect(calloutSymbolsIn("import { NOTE_MAX_LENGTH } from '../../../shared/types';")).toEqual([
+      'NOTE_MAX_LENGTH',
+    ]);
+    expect(calloutSymbolsIn("socket.on('callout:note:submit')")).toEqual(['callout*']);
+    // A retro identifier that merely contains a symbol as a substring is not a hit.
+    expect(calloutSymbolsIn('const MY_NOTE_MAX_LENGTH_X = 1;')).toEqual([]);
+  });
+
+  it('R13.1: the retro handler never routes a callout event name', () => {
+    const retroSource = readServerModule('websocket/retro-handler.ts');
+    for (const event of [
+      sharedTypes.CALLOUT_NOTE_SUBMIT,
+      sharedTypes.CALLOUT_NOTE_ADDED,
+      sharedTypes.CALLOUT_NOTE_REJECTED,
+    ]) {
+      expect(retroSource.includes(event)).toBe(false);
+    }
   });
 });
 
