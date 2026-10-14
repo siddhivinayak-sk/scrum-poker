@@ -274,6 +274,26 @@ jobs:
             echo "::warning::release tag ${RELEASE_TAG} does not match Chart.yaml version ${chart_version}; the Pages repo will publish ${chart_version} while GHCR publishes ${RELEASE_TAG#v}"
           fi
 
+      - name: Verify the gh-pages branch exists
+        run: |
+          # cr upload builds a git worktree from origin/gh-pages and never creates the
+          # branch itself, so a missing gh-pages surfaces as a bare
+          # `fatal: invalid reference: origin/gh-pages` with no hint at the cause. It
+          # resolves that ref against the local ref store, so the local remote-tracking
+          # ref - not the remote - is the condition to test. The checkout above uses
+          # fetch-depth: 0, which fetches every head into refs/remotes/origin/*; the
+          # ls-remote fallback names a narrowed depth as the cause if that ever changes,
+          # because both faults produce the identical cr error.
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1; then
+            echo "::error::gh-pages exists on $GITHUB_REPOSITORY but was not fetched into refs/remotes/origin/gh-pages; restore fetch-depth: 0 on this job's checkout step"
+            exit 1
+          fi
+          echo "::error::gh-pages does not exist on $GITHUB_REPOSITORY and chart-releaser cannot create it. Create it once from a scratch clone: git switch --orphan gh-pages, git commit --allow-empty -m \"chore: initialise gh-pages chart repo\", git push -u origin gh-pages. Then point Settings > Pages at the gh-pages branch, /(root)."
+          exit 1
+
       # chart-releaser creates one GitHub release per chart version and only for a version
       # that has none yet. With skip_existing, a push to main that did not bump
       # Chart.yaml version is a silent no-op, not a failure.
