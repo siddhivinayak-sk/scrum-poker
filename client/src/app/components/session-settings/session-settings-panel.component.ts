@@ -11,6 +11,7 @@ import {
   SessionConfiguration,
   VotingSystemType,
   PermissionMode,
+  resolveFunCallouts,
 } from '@shared/types';
 
 @Component({
@@ -165,6 +166,22 @@ import {
                         Show a 3-2-1 countdown before revealing cards
                       </span>
                     </label>
+
+                    @if (isGameOwner()) {
+                      <label class="toggle-label">
+                        <input
+                          type="checkbox"
+                          id="settings-funCallouts"
+                          formControlName="funCallouts"
+                          aria-label="Fun callouts"
+                          (change)="onFieldChange()"
+                        />
+                        <span class="toggle-text">Fun callouts</span>
+                        <span class="toggle-description">
+                          Show the playful panels that appear when cards are revealed
+                        </span>
+                      </label>
+                    }
                   </fieldset>
                 </div>
               }
@@ -434,6 +451,11 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
   readonly sessionId = input.required<string>();
   readonly config = input<SessionConfiguration | null>(null);
   readonly isOwner = input<boolean>(false);
+  /**
+   * True only for the true session owner (`ownerId === currentUser.id`), not merely a moderator.
+   * Gates rendering and sending of `funCallouts` (R6.10).
+   */
+  readonly isGameOwner = input<boolean>(false);
 
   private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);
@@ -467,6 +489,7 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
             issuePermission: cfg.issuePermission.mode,
             autoReveal: cfg.autoReveal,
             countdownAnimation: cfg.countdownAnimation,
+            funCallouts: resolveFunCallouts(cfg.funCallouts),
           },
           { emitEvent: false }
         );
@@ -484,6 +507,7 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
       issuePermission: [cfg?.issuePermission.mode ?? 'moderator-only'],
       autoReveal: [cfg?.autoReveal ?? false],
       countdownAnimation: [cfg?.countdownAnimation ?? false],
+      funCallouts: [resolveFunCallouts(cfg?.funCallouts)],
     });
     this.previousVotingSystem = cfg?.votingSystem ?? 'fibonacci';
   }
@@ -532,6 +556,11 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
       autoReveal: formValue.autoReveal ?? false,
       countdownAnimation: formValue.countdownAnimation ?? false,
     };
+
+    // Only the true owner may send funCallouts; a non-owner moderator omits the key (R6.10).
+    if (this.isGameOwner()) {
+      updatedConfig.funCallouts = resolveFunCallouts(formValue.funCallouts);
+    }
 
     const token = this.authService.getToken();
     const headers = new HttpHeaders({

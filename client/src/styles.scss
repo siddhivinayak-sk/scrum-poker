@@ -1,5 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 
+/* Vote callout keyframes and motion tokens. Imported once, here (vote-reveal-fun-callouts). */
+@use 'app/components/vote-callout/vote-callout.keyframes' as *;
+
 /* ===== Global CSS Custom Properties (Theme) ===== */
 :root {
   /* Primary palette */

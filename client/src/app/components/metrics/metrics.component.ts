@@ -1,7 +1,7 @@
 import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SessionStateService } from '../../services/session-state.service';
-import { VotingMetrics, CardValue } from '@shared/types';
+import { VotingMetrics, ExtendedCardValue } from '@shared/types';
 
 /**
  * Pure function: derive display-ready metrics data from VotingMetrics.

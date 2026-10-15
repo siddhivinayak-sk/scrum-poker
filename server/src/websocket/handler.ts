@@ -3,13 +3,18 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { URL } from 'url';
 import {
   User,
-  CardValue,
   WebSocketMessage,
   VotingRound,
   GameSessionState,
   ExtendedCardValue,
   VOTING_SYSTEMS,
   SPECIAL_CARDS,
+  CALLOUT_NOTE_SUBMIT,
+  CALLOUT_NOTE_ADDED,
+  CALLOUT_NOTE_REJECTED,
+  CalloutNoteRejection,
+  CalloutNoteAddedPayload,
+  CalloutNoteRejectedPayload,
 } from '../../../shared/types';
 import { validateToken } from '../services/auth-service';
 import { sessionRegistry } from '../services/session-registry';
@@ -242,6 +247,11 @@ function handleEvent(ws: WebSocket, user: User, sessionId: string, event: string
     case 'issue:select':
       handleIssueSelect(ws, user, sessionId, session, data);
       break;
+    case CALLOUT_NOTE_SUBMIT:
+      // Deliberately not in the permission switch above: any participant may submit a
+      // note; authorisation is by authorship, not by role.
+      handleCalloutNoteSubmit(ws, user, sessionId, session, data);
+      break;
     default:
       sendError(ws, `Unknown event: ${event}`, 'UNKNOWN_EVENT');
   }
@@ -303,7 +313,7 @@ function handleCardSelect(ws: WebSocket, user: User, sessionId: string, session:
     return;
   }
 
-  session.selectCard(user.id, cardValue as CardValue);
+  session.selectCard(user.id, cardValue);
   // Broadcast that a user voted (without revealing the value)
   broadcastToSession(sessionId, 'card:voted', { userId: user.id });
 
@@ -546,6 +556,72 @@ function handleIssueSelect(ws: WebSocket, user: User, sessionId: string, session
   } catch (err: any) {
     sendError(ws, err.message, 'ISSUE_NOT_FOUND');
   }
+}
+
+/** User-facing message for each Callout_Note rejection code (R10.6-R10.8, R10.17, R13.13). */
+const NOTE_MESSAGES: Readonly<Record<CalloutNoteRejection, string>> = {
+  NOTE_SESSION_MISMATCH: 'This note was addressed to a different session.',
+  NOTE_INVALID: 'The note could not be read.',
+  NOTE_EMPTY: 'Note text is required.',
+  NOTE_TOO_LONG: 'Notes can be at most 280 characters long.',
+  NOTE_ROUND_UNKNOWN: 'That round is unknown, so the note was not saved.',
+  NOTE_DUPLICATE: 'You already added a note for this round.',
+};
+
+/**
+ * Send a callout:note:rejected event to the sending connection only.
+ * Uses a dedicated event rather than `error` so the client's error-toast path is untouched.
+ */
+function rejectNote(ws: WebSocket, roundId: unknown, code: CalloutNoteRejection): void {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  const payload: CalloutNoteRejectedPayload = {
+    roundId: typeof roundId === 'string' ? roundId : '',
+    code,
+    message: NOTE_MESSAGES[code],
+  };
+  ws.send(createMessage(CALLOUT_NOTE_REJECTED, payload));
+}
+
+/**
+ * Handle callout:note:submit event.
+ */
+function handleCalloutNoteSubmit(
+  ws: WebSocket,
+  user: User,
+  sessionId: string,
+  session: GameSession,
+  data: unknown
+): void {
+  const payload: Record<string, unknown> =
+    typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
+  const { sessionId: claimed, roundId, text } = payload;
+
+  // 1. Session mismatch first, so a cross-session attempt never touches state (R13.13).
+  if (typeof claimed !== 'string' || claimed !== sessionId) {
+    rejectNote(ws, roundId, 'NOTE_SESSION_MISMATCH');
+    return;
+  }
+
+  // 2. Payload shape.
+  if (typeof roundId !== 'string' || roundId.length === 0 || typeof text !== 'string') {
+    rejectNote(ws, roundId, 'NOTE_INVALID');
+    return;
+  }
+
+  // 3. Remaining checks (empty, too long, unknown round, duplicate) belong to the session.
+  const result = session.addCalloutNote({
+    roundId,
+    authorId: user.id,
+    authorName: user.displayName,
+    text,
+  });
+  if (!result.ok) {
+    rejectNote(ws, roundId, result.code);
+    return;
+  }
+
+  const added: CalloutNoteAddedPayload = { roundId, note: result.note };
+  broadcastToSession(sessionId, CALLOUT_NOTE_ADDED, added);
 }
 
 /**

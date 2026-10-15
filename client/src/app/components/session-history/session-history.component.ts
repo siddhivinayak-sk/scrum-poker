@@ -2,7 +2,27 @@ import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
-import { HistoryEntry } from '@shared/types';
+import { CalloutNote, HistoryEntry, normaliseCalloutNotes } from '@shared/types';
+
+/**
+ * Pure function: order callout notes oldest first by server-stored time (R10.11).
+ * Decorate-sort-undecorate with the stored index as a stable tie-break, so notes
+ * sharing a `storedAt` keep their stored order. Malformed input normalises to [].
+ */
+export function orderCalloutNotes(value: unknown): CalloutNote[] {
+  return normaliseCalloutNotes(value)
+    .map((note, index) => ({ note, index, time: Date.parse(note.storedAt) }))
+    .sort((a, b) => {
+      if (!Number.isNaN(a.time) && !Number.isNaN(b.time)) {
+        return a.time - b.time || a.index - b.index;
+      }
+      if (a.note.storedAt !== b.note.storedAt) {
+        return a.note.storedAt < b.note.storedAt ? -1 : 1;
+      }
+      return a.index - b.index;
+    })
+    .map((decorated) => decorated.note);
+}
 
 /**
  * Pure function: format a history entry for summary display.
@@ -109,6 +129,17 @@ export function deriveHistorySummary(entry: HistoryEntry): HistorySummary {
                       <span>Outliers: {{ entry.metrics.outliers.length }}</span>
                     }
                   </div>
+                  @if (entry.calloutNotes?.length) {
+                    <h4>Notes</h4>
+                    <ul class="session-history__notes">
+                      @for (note of orderedNotes(entry); track note.id) {
+                        <li class="session-history__note">
+                          <span class="session-history__note-author">{{ note.authorName }}</span>
+                          <span class="session-history__note-text">{{ note.text }}</span>
+                        </li>
+                      }
+                    </ul>
+                  }
                 </div>
               }
             </li>
@@ -296,6 +327,30 @@ export function deriveHistorySummary(entry: HistoryEntry): HistorySummary {
         color: #595959;
         margin-top: 0.375rem;
       }
+
+      .session-history__notes {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .session-history__note {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 0.25rem 0;
+        font-size: 0.8rem;
+      }
+
+      .session-history__note-author {
+        font-weight: 500;
+      }
+
+      .session-history__note-text {
+        color: #333;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
     `,
   ],
 })
@@ -333,6 +388,10 @@ export class SessionHistoryComponent {
 
   getSummary(entry: HistoryEntry): HistorySummary {
     return deriveHistorySummary(entry);
+  }
+
+  orderedNotes(entry: HistoryEntry): CalloutNote[] {
+    return orderCalloutNotes(entry.calloutNotes);
   }
 
   promptClearHistory(): void {
