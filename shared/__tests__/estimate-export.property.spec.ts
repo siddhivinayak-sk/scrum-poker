@@ -42,16 +42,6 @@ const votingSystemArb: fc.Arbitrary<VotingSystemType> = fc.constantFrom(
   'power-of-2'
 );
 
-/**
- * The metrics engine's signature predates the extended voting systems: it
- * accepts `CardValue` while `getCardsForVotingSystem` yields the wider
- * `ExtendedCardValue`. The narrowing happens in one place so the call sites
- * stay readable, and no `any` is introduced.
- */
-function asCardValue(value: ExtendedCardValue): CardValue {
-  return value as CardValue;
-}
-
 function participantId(index: number): string {
   return `participant-${index}`;
 }
@@ -107,13 +97,13 @@ function entryFromCards(
   cards: readonly ExtendedCardValue[],
   overrides: Partial<HistoryEntry> = {}
 ): HistoryEntry {
-  const selections = new Map<string, CardValue>();
-  cards.forEach((card, index) => selections.set(participantId(index), asCardValue(card)));
+  const selections = new Map<string, ExtendedCardValue>();
+  cards.forEach((card, index) => selections.set(participantId(index), card));
 
   const participants: ParticipantVote[] = cards.map((card, index) => ({
     userId: participantId(index),
     displayName: `Participant ${index}`,
-    cardValue: asCardValue(card),
+    cardValue: card,
   }));
 
   return {
@@ -356,7 +346,7 @@ describe('Property 4: Export document shape and ordering', () => {
       votingDurationMs: fc.oneof(fc.nat({ max: 600_000 }), fc.constant(undefined)),
     })
     .map(({ storyDescription, participants, completedAt, votingDurationMs }) => {
-      const selections = new Map<string, CardValue>();
+      const selections = new Map<string, ExtendedCardValue>();
       for (const participant of participants) {
         if (participant.cardValue !== null) {
           selections.set(participant.userId, participant.cardValue);
@@ -448,7 +438,7 @@ describe('Property 4: Export document shape and ordering', () => {
 
           // R1.11: the Vote_Rows of an estimate carry exactly that estimate's
           // (name, vote) pairs — no vote leaks between estimates.
-          const renderVote = (cardValue: CardValue | null): string =>
+          const renderVote = (cardValue: ExtendedCardValue | null): string =>
             cardValue === null ? NO_VOTE_LABEL : String(cardValue);
           const expectedPairs = entry.participants
             .map((participant) =>

@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { StarsAnimationComponent } from '../stars-animation/stars-animation.component';
-import { User, CardValue, HistoryEntry } from '@shared/types';
+import { User, ExtendedCardValue, HistoryEntry } from '@shared/types';
 
 /**
  * Represents a single participant's card on the board.
@@ -13,7 +13,7 @@ export interface BoardCard {
   userId: string;
   displayName: string;
   hasVoted: boolean;
-  cardValue: CardValue | null;
+  cardValue: ExtendedCardValue | null;
 }
 
 /**
@@ -22,7 +22,7 @@ export interface BoardCard {
  */
 export function deriveBoardCards(
   participants: User[],
-  selections: Map<string, CardValue>,
+  selections: Map<string, ExtendedCardValue>,
   isRevealed: boolean,
   votedUserIds: Set<string> = new Set()
 ): BoardCard[] {

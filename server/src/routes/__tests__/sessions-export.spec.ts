@@ -10,7 +10,6 @@ import { SUMMARY_HEADER, buildEstimateExportCsv } from '../../../../shared/estim
 import {
   DEFAULT_SESSION_CONFIG,
   getCardsForVotingSystem,
-  type CardValue,
   type ExtendedCardValue,
   type SessionConfiguration,
   type VotingSystemType,
@@ -61,16 +60,6 @@ function createSession(ownerId: string, votingSystem: VotingSystemType = 'fibona
   return sessionRegistry.getSession(info.sessionId)!;
 }
 
-/**
- * The metrics engine and `selectCard` are typed against `CardValue`, which
- * predates the extended voting systems that `getCardsForVotingSystem` yields.
- * The narrowing lives here so the call sites stay readable and no `any`
- * cast is introduced.
- */
-function asCardValue(value: ExtendedCardValue): CardValue {
-  return value as CardValue;
-}
-
 interface RoundPlan {
   story: string;
   /** One entry per participant; `null` records a participant who did not vote. */
@@ -107,7 +96,7 @@ function playRounds(session: GameSession, plans: readonly RoundPlan[]): void {
     session.startRound(plan.story);
     plan.votes.forEach((vote, voterIndex) => {
       if (vote !== null) {
-        session.selectCard(`user-${roundIndex}-${voterIndex}`, asCardValue(vote));
+        session.selectCard(`user-${roundIndex}-${voterIndex}`, vote);
       }
     });
 

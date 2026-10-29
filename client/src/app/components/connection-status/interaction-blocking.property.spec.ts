@@ -292,6 +292,7 @@ class StubQrCodeComponent {
 class StubSessionSettingsPanelComponent {
   readonly sessionId = input<string>('');
   readonly config = input<SessionConfiguration | null>(null);
+  readonly isGameOwner = input<boolean>(false);
   readonly isOwner = input<boolean>(false);
 }
 
@@ -318,6 +319,16 @@ class StubFacilitatorFlowComponent {}
 
 @Component({ selector: 'app-issue-list-panel', standalone: true, template: '' })
 class StubIssueListPanelComponent {}
+
+@Component({ selector: 'app-vote-callout-layer', standalone: true, template: '' })
+class StubVoteCalloutLayerComponent {
+  readonly sessionId = input.required<string>();
+}
+
+@Component({ selector: 'app-moderator-note-balloon', standalone: true, template: '' })
+class StubModeratorNoteBalloonComponent {
+  readonly sessionId = input.required<string>();
+}
 
 const POKER_WRAPPERS: readonly WrapperPlacement[] = [
   {
@@ -430,6 +441,8 @@ async function renderPokerPage(): Promise<PageHarness> {
         StubFacilitatorFlowComponent,
         StubIssueListPanelComponent,
         ConnectionStatusComponent,
+        StubVoteCalloutLayerComponent,
+        StubModeratorNoteBalloonComponent,
       ],
     },
   });

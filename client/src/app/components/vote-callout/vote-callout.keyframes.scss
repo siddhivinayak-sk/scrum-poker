@@ -1,0 +1,201 @@
+/*
+ * Vote callout motion: keyframes, timing tokens and reduced-motion rules.
+ *
+ * Imported exactly once, from client/src/styles.scss. Keyframes live here and not in
+ * component styles because emulated encapsulation does not scope @keyframes, and the
+ * anyComponentStyle budget (6 kB warn / 12 kB error) is better spent on layout.
+ *
+ * Rules this file keeps (vote-reveal-fun-callouts, Requirements 5 and 6):
+ *  - Only `transform`, `opacity` and `filter` are ever animated (R5.11). `filter` is unused.
+ *  - Overshoot lives in explicit keyframes; easing curves between keyframes are monotone,
+ *    so every peak is a readable number in this file (R5.1).
+ *  - Idle ends on the identity transform and runs a finite number of times, so it settles
+ *    on its own inside 30 s with a zero-distance handoff (R5.4, R5.5, R5.15).
+ *  - Reduced motion is an opacity-only fade of at most 150 ms, with no idle and nothing
+ *    that touches transform / translate / rotate / scale (R6.1, R6.2, R6.3).
+ *
+ * Layout (position, z-index, sizes) is NOT defined here; it belongs to the layer component.
+ */
+
+/* ===== Tokens ===== */
+.vote-callout-layer {
+  --callout-entrance-ms: 420ms;  /* R5.1, R5.2: within 300-600 ms */
+  --callout-exit-ms: 320ms;      /* R5.7: within 250-450 ms */
+  --callout-idle-ms: 2600ms;     /* R5.4: loop period within 1.5-4 s */
+  --callout-idle-iterations: 11; /* 11 x 2600 ms = 28.6 s < 30 s (R5.5) */
+  --callout-reduced-ms: 150ms;   /* R6.1: at most 150 ms */
+  --callout-stagger: 70ms;       /* rewritten per render from the name count (R5.3) */
+  --callout-edge-gap: 16px;
+  --callout-ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* monotone ease-out */
+  --callout-ease-in: cubic-bezier(0.55, 0, 1, 0.45);  /* monotone ease-in */
+}
+
+/* ===== Entrance ===== */
+
+/* Near callout: scale pop. R5.1: start 0.5 in [0.4, 0.6], single peak 1.08 in [1.05, 1.12], rest 1. */
+@keyframes callout-pop-in {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Far prompt: slide in and settle. R5.2: starts fully off the right edge at 9deg (within 6-15), ends at 0. */
+@keyframes callout-slide-in {
+  0% {
+    transform: translateX(calc(100% + var(--callout-edge-gap))) rotate(9deg);
+    opacity: 0;
+  }
+
+  65% {
+    transform: translateX(-2%) rotate(-1.2deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.vote-callout-layer .callout--near {
+  animation: callout-pop-in var(--callout-entrance-ms) var(--callout-ease-out) both;
+}
+
+.vote-callout-layer .callout--far {
+  animation: callout-slide-in var(--callout-entrance-ms) var(--callout-ease-out) both;
+}
+
+/* Name stagger. R5.3: 40-90 ms per step, set through --callout-stagger by computeStagger(). */
+.vote-callout-layer .callout__name {
+  animation: callout-pop-in var(--callout-entrance-ms) var(--callout-ease-out) both;
+  animation-delay: calc(var(--callout-stagger) * var(--name-index, 0));
+}
+
+/* Names beyond the animation budget render at rest, with no flourish. R5.13 */
+.vote-callout-layer .callout__name.callout__name--at-rest {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* ===== Idle ===== */
+
+/*
+ * Amplitude 2 px (within 1-4) and 0.6deg (within 0.3-1.5). Both 0% and 100% are the identity
+ * transform, which equals where the entrance ends, so the handoff discontinuity is 0 px / 0deg
+ * (R5.15) and the finite run ends at rest (R5.5).
+ */
+@keyframes callout-idle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate3d(0, -2px, 0) rotate(0.6deg);
+  }
+
+  75% {
+    transform: translate3d(0, 2px, 0) rotate(-0.6deg);
+  }
+}
+
+.vote-callout-layer .callout--idle {
+  animation: callout-idle var(--callout-idle-ms) ease-in-out var(--callout-idle-iterations) both;
+}
+
+/* ===== Exit ===== */
+
+/*
+ * R5.7: scale 0.25 (at most 0.3), rotation 14deg (at least 12), downward 70% of panel height
+ * (at least 50), fade to 0, 320 ms. The start values are captured from the live element so an
+ * exit during the entrance continues from where the entrance was (R5.16).
+ */
+@keyframes callout-pop-out {
+  0% {
+    transform: var(--callout-exit-from, none);
+    opacity: var(--callout-exit-opacity, 1);
+  }
+
+  100% {
+    transform: translateY(70%) rotate(14deg) scale(0.25);
+    opacity: 0;
+  }
+}
+
+.vote-callout-layer .callout--exiting {
+  animation: callout-pop-out var(--callout-exit-ms) var(--callout-ease-in) forwards;
+}
+
+/* ===== Reduced motion: opacity-only fades ===== */
+
+@keyframes callout-fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes callout-fade-out {
+  0% {
+    opacity: var(--callout-exit-opacity, 1);
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+ * The CSS path: holds even if the JS signal is wrong. Entrance and exit become a fade of at
+ * most 150 ms, the idle loop is dropped entirely, and no transform is applied (R6.1-R6.3).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .vote-callout-layer .callout,
+  .vote-callout-layer .callout__name {
+    transform: none !important;
+    animation: callout-fade-in var(--callout-reduced-ms) linear both !important;
+    animation-delay: 0s !important;
+  }
+
+  .vote-callout-layer .callout--idle {
+    animation: none !important;
+  }
+
+  .vote-callout-layer .callout--exiting {
+    animation: callout-fade-out var(--callout-reduced-ms) linear forwards !important;
+  }
+}
+
+/*
+ * The class path: covers the session `funCallouts` half of Reduced_Motion_Mode, which no media
+ * query can see. The layer carries `vote-callout-layer--still` while it is active.
+ */
+.vote-callout-layer.vote-callout-layer--still .callout,
+.vote-callout-layer.vote-callout-layer--still .callout__name {
+  transform: none;
+  animation: callout-fade-in var(--callout-reduced-ms) linear both;
+  animation-delay: 0s;
+}
+
+.vote-callout-layer.vote-callout-layer--still .callout--idle {
+  animation: none;
+}
+
+.vote-callout-layer.vote-callout-layer--still .callout--exiting {
+  animation: callout-fade-out var(--callout-reduced-ms) linear forwards;
+}

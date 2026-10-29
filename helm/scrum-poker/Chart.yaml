@@ -3,8 +3,8 @@ name: scrum-poker
 description: Real-time collaborative planning poker and sprint retrospective tool for agile teams, served from a single container.
 type: application
 # Chart version - MAJOR.MINOR.PATCH, bumped on every chart change
-version: 0.0.7
+version: 0.0.8
 # Version of the application image this chart deploys by default
-appVersion: "0.0.7"
+appVersion: "0.0.8"
 # networking.k8s.io/v1 Ingress and values.schema.json enforcement need 1.19+
 kubeVersion: ">=1.19.0-0"

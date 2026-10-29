@@ -1,62 +1,61 @@
 import {
-  CardValue,
-  NumericCardValue,
+  ExtendedCardValue,
   VotingMetrics,
-  FIBONACCI_SEQUENCE,
-  SPECIAL_CARDS,
-  SpecialCardValue,
+  VotingSystemType,
+  cardLadderFor,
+  cardNumericValue,
+  ladderIndexOf,
 } from '../../../shared/types';
 
-/**
- * Fibonacci index lookup: maps each Fibonacci card value to its position
- * in the sequence [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89].
- */
-const FIBONACCI_INDEX = new Map<NumericCardValue, number>(
-  FIBONACCI_SEQUENCE.map((value, index) => [value, index])
-);
-
-const SPECIAL_CARD_SET = new Set<string>(SPECIAL_CARDS);
-
-function isSpecialCard(value: CardValue): value is SpecialCardValue {
-  return SPECIAL_CARD_SET.has(value as string);
+/** A numeric vote: who cast it, the card they chose, and that card's Card_Numeric_Value. */
+interface NumericVote {
+  userId: string;
+  card: ExtendedCardValue;
+  numeric: number;
 }
 
-function isNumericCard(value: CardValue): value is NumericCardValue {
-  return !isSpecialCard(value);
-}
+/** Outlier threshold: ladder-index distance from the mode must be strictly greater than this. */
+const OUTLIER_INDEX_THRESHOLD = 2;
 
 /**
  * Calculate voting metrics from a map of user selections.
  *
- * - distribution counts ALL card values (including special cards)
- * - average, mode, spread, and outlier detection only use numeric card values
+ * - distribution counts ALL card values (specials, t-shirt sizes and unknown values included)
+ * - a vote is numeric only when its card has a Card_Numeric_Value
+ * - average, spread and mode are computed over Card_Numeric_Values; mode is returned as the
+ *   representative card value (so '½' is reported as '½', not 0.5)
  * - insufficientData is true when fewer than 2 numeric votes exist
- * - When there's a tie for mode, the lowest numeric value wins
- * - Outliers are voters whose Fibonacci index distance from the mode's index is > 2
+ * - a mode tie resolves to the least Card_Numeric_Value
+ * - outliers are voters whose index on the active system's Card_Ladder is more than 2 steps
+ *   from the mode's index; empty when the ladder has fewer than 2 entries or the mode is
+ *   not on the ladder
+ *
+ * `votingSystem` is optional with a 'fibonacci' default only so that legacy one-argument
+ * test calls keep compiling; every production call site passes it explicitly.
  */
 export function calculate(
-  selections: Map<string, CardValue>
+  selections: ReadonlyMap<string, ExtendedCardValue>,
+  votingSystem: VotingSystemType | string = 'fibonacci'
 ): VotingMetrics {
-  // Build distribution for ALL card values (including special cards)
+  // Distribution counts every entry, whatever its card value.
   const distribution: Record<string, number> = {};
   for (const [, cardValue] of selections) {
     const key = String(cardValue);
     distribution[key] = (distribution[key] ?? 0) + 1;
   }
 
-  // Separate numeric votes (userId -> numericValue)
-  const numericVotes: Array<{ userId: string; value: NumericCardValue }> = [];
-  for (const [userId, cardValue] of selections) {
-    if (isNumericCard(cardValue)) {
-      numericVotes.push({ userId, value: cardValue });
+  // Numeric votes are the entries whose card has a Card_Numeric_Value.
+  const numericVotes: NumericVote[] = [];
+  for (const [userId, card] of selections) {
+    const numeric = cardNumericValue(card);
+    if (numeric !== undefined) {
+      numericVotes.push({ userId, card, numeric });
     }
   }
 
   const numericVoteCount = numericVotes.length;
-  const insufficientData = numericVoteCount < 2;
 
-  // When insufficient data, return early with nulls
-  if (insufficientData) {
+  if (numericVoteCount < 2) {
     return {
       average: null,
       mode: null,
@@ -68,44 +67,59 @@ export function calculate(
     };
   }
 
-  // Calculate average of numeric votes
-  const sum = numericVotes.reduce((acc, v) => acc + v.value, 0);
+  // Average and spread over mapped values.
+  let sum = 0;
+  let min = numericVotes[0].numeric;
+  let max = numericVotes[0].numeric;
+  for (const { numeric } of numericVotes) {
+    sum += numeric;
+    if (numeric < min) min = numeric;
+    if (numeric > max) max = numeric;
+  }
   const average = sum / numericVoteCount;
+  const spread = max - min;
 
-  // Calculate mode: most frequent numeric value, lowest value breaks ties
-  const numericCounts = new Map<NumericCardValue, number>();
-  for (const { value } of numericVotes) {
-    numericCounts.set(value, (numericCounts.get(value) ?? 0) + 1);
+  // Mode over mapped values: greatest count wins, ties go to the least mapped value.
+  // Remember the first card observed for each mapped value as its representative.
+  const counts = new Map<number, { count: number; card: ExtendedCardValue }>();
+  for (const { card, numeric } of numericVotes) {
+    const entry = counts.get(numeric);
+    if (entry) {
+      entry.count += 1;
+    } else {
+      counts.set(numeric, { count: 1, card });
+    }
   }
 
-  let mode: NumericCardValue = numericVotes[0].value;
+  let modeNumeric = numericVotes[0].numeric;
+  let modeCard: ExtendedCardValue = numericVotes[0].card;
   let maxCount = 0;
-  for (const [value, count] of numericCounts) {
-    if (count > maxCount || (count === maxCount && value < mode)) {
-      mode = value;
+  for (const [numeric, { count, card }] of counts) {
+    if (count > maxCount || (count === maxCount && numeric < modeNumeric)) {
+      modeNumeric = numeric;
+      modeCard = card;
       maxCount = count;
     }
   }
 
-  // Calculate spread: max - min of numeric values
-  const numericValues = numericVotes.map((v) => v.value);
-  const min = Math.min(...numericValues);
-  const max = Math.max(...numericValues);
-  const spread = max - min;
-
-  // Outlier detection: Fibonacci index distance > 2 from mode's index
-  const modeIndex = FIBONACCI_INDEX.get(mode)!;
+  // Outliers: ladder-index distance from the mode's index, on the active system's ladder.
   const outliers: string[] = [];
-  for (const { userId, value } of numericVotes) {
-    const voteIndex = FIBONACCI_INDEX.get(value);
-    if (voteIndex !== undefined && Math.abs(voteIndex - modeIndex) > 2) {
-      outliers.push(userId);
+  const ladder = cardLadderFor(votingSystem);
+  if (ladder.length >= 2) {
+    const modeIndex = ladderIndexOf(ladder, modeCard);
+    if (modeIndex >= 0) {
+      for (const { userId, card } of numericVotes) {
+        const voteIndex = ladderIndexOf(ladder, card);
+        if (voteIndex >= 0 && Math.abs(voteIndex - modeIndex) > OUTLIER_INDEX_THRESHOLD) {
+          outliers.push(userId);
+        }
+      }
     }
   }
 
   return {
     average,
-    mode,
+    mode: modeCard,
     spread,
     distribution,
     outliers,

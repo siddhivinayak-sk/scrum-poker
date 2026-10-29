@@ -2,11 +2,12 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   User,
   VotingRound,
-  CardValue,
+  ExtendedCardValue,
   VotingMetrics,
   HistoryEntry,
   ParticipantVote,
   SessionState,
+  DEFAULT_SESSION_CONFIG,
 } from '../../../shared/types';
 import { calculate } from './metrics-engine';
 
@@ -15,7 +16,7 @@ import { calculate } from './metrics-engine';
  * Contains the selections map and the computed voting metrics.
  */
 export interface RevealResult {
-  selections: Map<string, CardValue>;
+  selections: Map<string, ExtendedCardValue>;
   metrics: VotingMetrics;
 }
 
@@ -79,7 +80,7 @@ export function getCurrentRound(): VotingRound | null {
  * Ignored if there is no active round or the round is already revealed.
  * Last-write-wins: selecting again replaces the previous selection.
  */
-export function selectCard(userId: string, cardValue: CardValue): void {
+export function selectCard(userId: string, cardValue: ExtendedCardValue): void {
   if (!currentRound || currentRound.status !== 'voting') {
     return;
   }
@@ -90,7 +91,7 @@ export function selectCard(userId: string, cardValue: CardValue): void {
  * Get the current selections map.
  * Returns an empty map if no round is active.
  */
-export function getSelections(): Map<string, CardValue> {
+export function getSelections(): Map<string, ExtendedCardValue> {
   if (!currentRound) {
     return new Map();
   }
@@ -113,7 +114,7 @@ export function revealCards(): RevealResult {
   currentRound.status = 'revealed';
   currentRound.revealedAt = new Date().toISOString();
 
-  const metrics = calculate(currentRound.selections);
+  const metrics = calculate(currentRound.selections, DEFAULT_SESSION_CONFIG.votingSystem);
 
   return {
     selections: currentRound.selections,
@@ -138,7 +139,7 @@ export function clearBoard(): HistoryEntry {
     cardValue: currentRound!.selections.get(user.id) ?? null,
   }));
 
-  const metrics = calculate(currentRound.selections);
+  const metrics = calculate(currentRound.selections, DEFAULT_SESSION_CONFIG.votingSystem);
 
   const entry: HistoryEntry = {
     roundId: currentRound.id,
