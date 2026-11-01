@@ -15,6 +15,27 @@ import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
 import { User, CardValue, VotingRound } from '@shared/types';
 
+// Several tests below replace window.matchMedia with a partial stub. Spec files share one window,
+// so put the original back after every test or later files inherit a list with no listeners.
+// Vitest defines `matchMedia` on the global as a getter/setter, and a plain assignment goes into a
+// hidden override the getter keeps returning even after the descriptor is restored. Install the
+// stub as an own data property instead, so restoring the descriptor removes it.
+function stubMatchMedia(matches: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockReturnValue({ matches }),
+  });
+}
+let originalMatchMedia: PropertyDescriptor | undefined;
+beforeEach(() => {
+  originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+});
+afterEach(() => {
+  if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+  else Reflect.deleteProperty(window, 'matchMedia');
+});
+
 describe('BoardComponent', () => {
   let component: BoardComponent;
   let participantsSignal: WritableSignal<User[]>;
@@ -70,7 +91,7 @@ describe('BoardComponent', () => {
   describe('stars animation integration', () => {
     beforeEach(() => {
       // Mock matchMedia for the stars animation component
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
     });
 
     it('should not trigger stars animation on initial state (already revealed on reconnect)', () => {
@@ -391,7 +412,7 @@ describe('board clear animation', () => {
 
     it('should set clearing to true and snapshot clearingCards when triggered', () => {
       // Mock matchMedia to return no reduced motion
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
 
       participantsSignal.set([
         { id: 'u1', displayName: 'Alice', role: 'participant', isAnonymous: false },
@@ -414,7 +435,7 @@ describe('board clear animation', () => {
     });
 
     it('should not enter clearing state when there are no cards', () => {
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
 
       component.triggerClearAnimation();
 
@@ -423,7 +444,7 @@ describe('board clear animation', () => {
     });
 
     it('should reset clearing to false after animation duration elapses', () => {
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
 
       participantsSignal.set([
         { id: 'u1', displayName: 'Alice', role: 'participant', isAnonymous: false },
@@ -450,7 +471,7 @@ describe('board clear animation', () => {
     });
 
     it('should still be clearing before animation duration fully elapses', () => {
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
 
       participantsSignal.set([
         { id: 'u1', displayName: 'Alice', role: 'participant', isAnonymous: false },
@@ -473,7 +494,7 @@ describe('board clear animation', () => {
 
     it('should reset immediately without timer when reduced motion is preferred', () => {
       // Mock matchMedia to indicate reduced motion preference
-      window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+      stubMatchMedia(true);
 
       participantsSignal.set([
         { id: 'u1', displayName: 'Alice', role: 'participant', isAnonymous: false },
@@ -491,13 +512,13 @@ describe('board clear animation', () => {
 
   describe('prefersReducedMotion (pure function)', () => {
     it('should return true when matchMedia indicates reduced motion', () => {
-      window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+      stubMatchMedia(true);
 
       expect(prefersReducedMotion()).toBe(true);
     });
 
     it('should return false when matchMedia indicates no reduced motion preference', () => {
-      window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+      stubMatchMedia(false);
 
       expect(prefersReducedMotion()).toBe(false);
     });

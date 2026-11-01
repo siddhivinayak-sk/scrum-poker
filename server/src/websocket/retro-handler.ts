@@ -9,7 +9,14 @@ import {
   RETRO_FEELING_SELECT,
   RETRO_FEELING_UPDATED,
   RETRO_SESSION_ENDED,
+  RETRO_CHAT_MESSAGE_SEND,
+  RETRO_CHAT_MESSAGE_ADDED,
+  RETRO_CHAT_MESSAGE_REJECTED,
+  RETRO_CHAT_HISTORY,
+  ChatHistoryPayload,
+  ChatMessageAddedPayload,
 } from '../../../shared/types';
+import { evaluateChatSend, formatChatLogLine } from './chat-send';
 
 // Re-exported so the retro routes can broadcast the event without importing
 // shared/types directly (R9.8, R13.1).
@@ -202,6 +209,12 @@ function handleRetroEvent(ws: WebSocket, user: User, sessionId: string, event: s
         break;
       case 'role:change':
         handleRoleChange(ws, user, sessionId, session, data);
+        break;
+      case RETRO_CHAT_MESSAGE_SEND:
+        // Open to every participant (R1.12) and allowed after
+        // retro:board:complete (R18.9). handleChatSend catches its own errors,
+        // so the catch below never sends retro:error for chat (R19.6, R20.7).
+        handleChatSend(ws, user, sessionId, session, data);
         break;
       default:
         sendError(ws, `Unknown event: ${event}`, 'UNKNOWN_EVENT');
@@ -528,6 +541,77 @@ function handleRoleChange(ws: WebSocket, user: User, sessionId: string, session:
   broadcastToSession(sessionId, 'retro:participant:joined', { participants: session.getParticipants() });
 }
 
+/** Name of a thrown value for the chat log line; never its message (R19.6). */
+function chatErrorName(err: unknown): string {
+  return err instanceof Error ? err.name : 'Error';
+}
+
+/**
+ * Handle `retro:chat:message:send` (R15.4–R15.8, R16.5).
+ *
+ * The author is the authenticated participant of this connection, never a
+ * payload field (R15.1). Any exception is logged by error name only and sends
+ * nothing, so no chat or session state changes and the connection stays open
+ * (R19.6, R20.7).
+ */
+function handleChatSend(ws: WebSocket, user: User, sessionId: string, session: RetroSession, raw: unknown): void {
+  // A socket no longer in the client map (closed or removed) gets nothing (R15.12).
+  if (!retroSessionClients.get(sessionId)?.get(user.id)?.has(ws)) return;
+
+  try {
+    const outcome = evaluateChatSend(raw, {
+      connectionSessionId: sessionId,
+      author: { id: user.id, displayName: user.displayName },
+      room: session.chat,
+    });
+
+    switch (outcome.kind) {
+      case 'rejected':
+        sendToClient(ws, RETRO_CHAT_MESSAGE_REJECTED, outcome.payload);
+        return;
+      case 'replay': {
+        const payload: ChatMessageAddedPayload = { message: outcome.message };
+        sendToClient(ws, RETRO_CHAT_MESSAGE_ADDED, payload);
+        return;
+      }
+      case 'accepted': {
+        // Build the frame before commit so a serialisation error leaves the
+        // room unchanged (R20.7).
+        const payload: ChatMessageAddedPayload = { message: outcome.message };
+        const frame = createMessage(RETRO_CHAT_MESSAGE_ADDED, payload);
+        outcome.commit();
+
+        const userMap = retroSessionClients.get(sessionId);
+        if (!userMap) return;
+        userMap.forEach((sockets) => {
+          sockets.forEach((socket) => {
+            if (socket.readyState !== WebSocket.OPEN) return;
+            try {
+              socket.send(frame);
+            } catch (err: unknown) {
+              // One failing socket must not stop delivery to the others (R15.5).
+              console.error(formatChatLogLine({
+                boardKind: 'retro',
+                sessionId,
+                event: RETRO_CHAT_MESSAGE_ADDED,
+                errorName: chatErrorName(err),
+              }));
+            }
+          });
+        });
+        return;
+      }
+    }
+  } catch (err: unknown) {
+    console.error(formatChatLogLine({
+      boardKind: 'retro',
+      sessionId,
+      event: RETRO_CHAT_MESSAGE_SEND,
+      errorName: chatErrorName(err),
+    }));
+  }
+}
+
 /**
  * Main WebSocket connection handler for retrospective sessions.
  * Authenticates the connection via token query parameter,
@@ -604,6 +688,11 @@ export function handleRetroWebSocket(ws: WebSocket, request: IncomingMessage): v
   // Broadcast updated participant list to all clients in this session
   broadcastToSession(sessionId, 'retro:participant:joined', { participants: session.getParticipants() });
 
+  // Chat history goes to the new socket only, after every existing join frame
+  // (R18.5, R20.6).
+  const history: ChatHistoryPayload = { messages: session.chat.history() };
+  sendToClient(ws, RETRO_CHAT_HISTORY, history);
+
   // Listen for incoming messages
   ws.on('message', (rawData: WebSocket.RawData) => {
     try {
@@ -614,7 +703,10 @@ export function handleRetroWebSocket(ws: WebSocket, request: IncomingMessage): v
         return;
       }
 
-      handleRetroEvent(ws, participant, sessionId, message.event, message.data || {});
+      // Chat gets the raw payload so evaluateChatSend can reject a missing or
+      // non-object one as CHAT_INVALID (C1); every other event keeps `|| {}`.
+      const data = message.event === RETRO_CHAT_MESSAGE_SEND ? message.data : message.data || {};
+      handleRetroEvent(ws, participant, sessionId, message.event, data);
     } catch {
       sendError(ws, 'Invalid message format: malformed JSON', 'INVALID_MESSAGE');
     }
@@ -665,6 +757,18 @@ export function removeRetroConnection(ws: WebSocket): void {
   if (uMap.size === 0) {
     retroSessionClients.delete(sid);
   }
+}
+
+/**
+ * Session ID of a retro socket for the socket error log (R23.8): taken from
+ * the handler's own maps, never from the URL, and only while the socket is
+ * still registered in the session's client map.
+ */
+export function getRegisteredRetroSessionId(ws: WebSocket): string | undefined {
+  const sid = wsSessionMap.get(ws);
+  const user = wsUserMap.get(ws);
+  if (sid === undefined || user === undefined) return undefined;
+  return retroSessionClients.get(sid)?.get(user.id)?.has(ws) ? sid : undefined;
 }
 
 /**

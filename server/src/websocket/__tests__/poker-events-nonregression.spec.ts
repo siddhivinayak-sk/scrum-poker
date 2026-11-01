@@ -365,7 +365,7 @@ describe('Poker WebSocket events — non-regression against recorded baselines',
       });
     });
 
-    it('a new connection -> session:state {state} to it alone and participant:joined {participants} to the session', () => {
+    it('a new connection -> session:state {state} and chat:history {messages} to it alone, participant:joined {participants} to the session', () => {
       const room = createRoom();
       let carol: MockWs | undefined;
       const observed = capture(() => {
@@ -376,6 +376,7 @@ describe('Poker WebSocket events — non-regression against recorded baselines',
       expect(observed).toEqual({
         'session:state': { keys: ['state'], recipients: ['Carol'] },
         'participant:joined': { keys: ['participants'], recipients: ['Alice', 'Bob', 'Carol', 'Mod'] },
+        'chat:history': { keys: ['messages'], recipients: ['Carol'] },
       });
     });
 

@@ -17,6 +17,7 @@ import {
   initialEpisodeState,
   reduceEpisode,
 } from './connection-episode';
+import { exceedsFrameLimit } from './frame-guard';
 
 /**
  * Calculate exponential backoff delay for reconnection attempts.
@@ -33,6 +34,25 @@ export { calculateBackoff as calculateRetroBackoff } from './connection-episode'
  * `dismiss-connection-toasts` effect maps onto `ToastService.dismissByTag` (R11.27).
  */
 const CONNECTION_TOAST_TAG = 'connection';
+
+/** Shown, untagged, for each send rejected by the frame guard (R23.10, R23.16). */
+const SEND_TOO_LARGE_MESSAGE = 'This change is too large to send.';
+
+/** Shown once when consecutive 1009 closes halt reconnection (R23.12). */
+const PAYLOAD_TOO_LARGE_HALT_MESSAGE =
+  'The connection was closed because a message was too large. Reload the page to reconnect.';
+
+/**
+ * One record per created socket (D13). Handlers capture their own record, so a
+ * replaced (stale) socket can be told apart from the Current_Socket (R25.1).
+ */
+interface SocketRecord {
+  readonly socket: WebSocket;
+  /** The socket fired `close`. */
+  closeEmitted: boolean;
+  /** The service called `socket.close()`. */
+  closeCalled: boolean;
+}
 
 /**
  * Close codes the retro socket reports with their own cause and no reconnection
@@ -64,7 +84,8 @@ export class RetroWebSocketService implements OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly basePath = inject(BasePathService);
 
-  private ws: WebSocket | null = null;
+  /** The Current_Socket, or none. Events of any other record are ignored (R25). */
+  private current: SocketRecord | null = null;
   private token: string | null = null;
   private sessionId: string | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -91,6 +112,14 @@ export class RetroWebSocketService implements OnDestroy {
   private readonly _connectionState = signal<ConnectionState>(initialEpisodeState.connection);
 
   readonly connectionState: Signal<ConnectionState> = this._connectionState.asReadonly();
+
+  private readonly _generation = signal(0);
+
+  /**
+   * Incremented on every `open` of the Current_Socket, before the `open` event is
+   * dispatched; never reset (R25.7).
+   */
+  readonly connectionGeneration: Signal<number> = this._generation.asReadonly();
 
   constructor() {
     // Subscribed internally, independently of any page subscription, so the
@@ -119,30 +148,46 @@ export class RetroWebSocketService implements OnDestroy {
   disconnect(): void {
     this.manualDisconnect = true;
     this.clearReconnectTimer();
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.current) {
+      this.retire(this.current);
+      this.current = null;
     }
     // A user-initiated close is a `manual-disconnect`, never a `close`: it ends the
-    // episode silently instead of opening one.
+    // episode silently instead of opening one. The retired socket's later `close`
+    // takes the stale branch, so this is the only `manual-disconnect` (R25.2).
     this.dispatch({ kind: 'manual-disconnect' });
   }
 
   /**
-   * Send a message to the server.
+   * Send a message to the server over the Current_Socket.
+   *
+   * Returns `false` without side effects while the Current_Socket is not `OPEN`,
+   * and `false` with one untagged error toast when the serialised envelope is
+   * above `WS_MAX_PAYLOAD_BYTES`; `true` once the frame was handed to the socket
+   * (R23.10, R23.16, R25.10).
    */
-  send(event: string, data: any): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        const message: WebSocketMessage = {
-          event,
-          data,
-          timestamp: new Date().toISOString(),
-        };
-        this.ws.send(JSON.stringify(message));
-      } catch {
-        this.toastService.show('error', 'Failed to send message to server. Please try again.');
+  send(event: string, data: unknown): boolean {
+    const socket = this.current?.socket;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+    try {
+      const message: WebSocketMessage = {
+        event,
+        data,
+        timestamp: new Date().toISOString(),
+      };
+      const json = JSON.stringify(message);
+      if (exceedsFrameLimit(json)) {
+        // No tag, so `dismiss-connection-toasts` never removes it; nothing logged.
+        this.toastService.show('error', SEND_TOO_LARGE_MESSAGE);
+        return false;
       }
+      socket.send(json);
+      return true;
+    } catch {
+      this.toastService.show('error', 'Failed to send message to server. Please try again.');
+      return false;
     }
   }
 
@@ -269,6 +314,12 @@ export class RetroWebSocketService implements OnDestroy {
       case 'toast-close-code':
         this.notifyCloseCode(effect.code);
         break;
+
+      case 'toast-payload-too-large':
+        this.toastService.show('error', PAYLOAD_TOO_LARGE_HALT_MESSAGE, {
+          tag: CONNECTION_TOAST_TAG,
+        });
+        break;
     }
   }
 
@@ -291,10 +342,20 @@ export class RetroWebSocketService implements OnDestroy {
     this.toastService.dismissByTag?.(CONNECTION_TOAST_TAG);
   }
 
+  /**
+   * Close a socket at most once, and never one that already fired `close`
+   * (R25.1, R25.2).
+   */
+  private retire(record: SocketRecord): void {
+    if (!record.closeEmitted && !record.closeCalled) {
+      record.socket.close();
+    }
+    record.closeCalled = true;
+  }
+
   private openConnection(): void {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.current) {
+      this.retire(this.current);
     }
 
     // The socket is CONNECTING from here until `onopen`, which the indicator reads as
@@ -305,15 +366,31 @@ export class RetroWebSocketService implements OnDestroy {
     const basePath = this.basePath.getBasePath();
     const url = `${protocol}//${window.location.host}${basePath}/retro?token=${this.token}&sessionId=${this.sessionId}`;
 
-    this.ws = new WebSocket(url);
+    const record: SocketRecord = {
+      socket: new WebSocket(url),
+      closeEmitted: false,
+      closeCalled: false,
+    };
+    this.current = record;
 
-    this.ws.onopen = () => {
+    // Every handler first checks that its record is still the Current_Socket; a
+    // Stale_Socket's events change nothing the service exposes (R25.3–R25.6).
+    record.socket.onopen = () => {
+      if (record !== this.current) {
+        this.retire(record);
+        return;
+      }
       this.ngZone.run(() => {
+        // Before `open`, so a consumer reacting to `connected` reads the new value.
+        this._generation.update((g) => g + 1);
         this.dispatch({ kind: 'open' });
       });
     };
 
-    this.ws.onmessage = (event: MessageEvent) => {
+    record.socket.onmessage = (event: MessageEvent) => {
+      if (record !== this.current) {
+        return;
+      }
       this.ngZone.run(() => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
@@ -324,22 +401,28 @@ export class RetroWebSocketService implements OnDestroy {
       });
     };
 
-    this.ws.onclose = (event: CloseEvent) => {
+    record.socket.onclose = (event: CloseEvent) => {
+      record.closeEmitted = true;
+      if (record !== this.current) {
+        return;
+      }
       this.ngZone.run(() => this.handleClose(event));
     };
 
-    this.ws.onerror = () => {
+    record.socket.onerror = () => {
       // The onclose handler will fire after onerror, so reconnection is handled there.
+      // A Stale_Socket's error is ignored the same way.
     };
   }
 
   /**
-   * The single place where a socket closure turns into a connection decision.
-   * Every outcome is the reducer's: this method only chooses which event the
-   * closure is.
+   * The single place where a closure of the Current_Socket turns into a
+   * connection decision. Every outcome is the reducer's: this method only
+   * chooses which event the closure is. The closed record stays the
+   * Current_Socket, so `send()` returns `false` and the next `openConnection()`
+   * does not call `close()` on it.
    */
   private handleClose(event: CloseEvent): void {
-    this.ws = null;
 
     // The moderator ended the session: the 1000 close that follows the
     // broadcast, and a 4004 close answering a message that raced the removal,
@@ -361,7 +444,9 @@ export class RetroWebSocketService implements OnDestroy {
    * `retro:session:ended` arrived: the session is gone, so stop the transport
    * before the server's close lands. The user-visible part (one notification
    * and the navigation to the lobby) belongs to `RetroBoardPageComponent`,
-   * which subscribes to the same event (R9.12).
+   * which subscribes to the same event (R9.12). Only the Current_Socket delivers
+   * messages, so a stale socket's `retro:session:ended` never reaches here
+   * (R25.4, R25.6).
    */
   private handleSessionEnded(): void {
     this.sessionEnded = true;

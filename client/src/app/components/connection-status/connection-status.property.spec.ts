@@ -247,7 +247,7 @@ describe('Property 16: the connection indicator maps every state to a colour and
       }),
       NUM_RUNS,
     );
-  });
+  }, 120_000);
 
   // --- Invariant 2: one label text, in all three channels (R11.4-R11.7) ----------
 

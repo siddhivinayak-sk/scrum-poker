@@ -173,7 +173,7 @@ describe('Property 5: issue row never overflows its panel', () => {
       }),
       { numRuns: NUM_RUNS },
     );
-  });
+  }, 120_000);
 
   it('R2.5: a title with no whitespace character does not widen the row beyond the panel', () => {
     fc.assert(

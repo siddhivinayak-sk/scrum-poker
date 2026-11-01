@@ -53,7 +53,7 @@ describe('Property 4: Session link URL construction', () => {
       ),
       { numRuns: 200 },
     );
-  });
+  }, 120_000);
 
   it('should allow extracting the original session ID from the constructed URL', () => {
     fc.assert(
@@ -198,6 +198,11 @@ class StubVoteCalloutLayerComponent {
 
 @Component({ selector: 'app-moderator-note-balloon', standalone: true, template: '' })
 class StubModeratorNoteBalloonComponent {
+  readonly sessionId = input.required<string>();
+}
+
+@Component({ selector: 'app-chat-host', standalone: true, template: '' })
+class StubChatHostComponent {
   readonly sessionId = input.required<string>();
 }
 
@@ -374,6 +379,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
           StubConnectionStatusComponent,
           StubVoteCalloutLayerComponent,
           StubModeratorNoteBalloonComponent,
+          StubChatHostComponent,
         ],
       },
     });

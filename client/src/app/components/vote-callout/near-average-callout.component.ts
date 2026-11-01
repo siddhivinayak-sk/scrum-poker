@@ -192,7 +192,7 @@ const MAIN_REGION_ID = 'main-content';
 
       @media (max-width: 767.98px) {
         .callout {
-          max-width: calc(100vw - 32px);
+          max-width: calc(100vw - 88px); /* clears the Chat_Launcher (session-chat R12.3) */
         }
       }
     `,

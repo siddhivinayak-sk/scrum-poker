@@ -4,6 +4,7 @@ import {
   OnDestroy,
   DestroyRef,
   ElementRef,
+  afterNextRender,
   inject,
   signal,
   computed,
@@ -26,6 +27,8 @@ import { RetroStateService } from '../../services/retro-state.service';
 import { AuthService } from '../../services/auth.service';
 import { BasePathService } from '../../services/base-path.service';
 import { ToastService } from '../../services/toast.service';
+import { BoardOverlayLayoutService } from '../../services/board-overlay-layout.service';
+import { ChatHostComponent } from '../chat/chat-host.component';
 import { ConnectionStatusComponent } from '../connection-status/connection-status.component';
 import { RetroColumnComponent } from './retro-column.component';
 import { RetroToolbarComponent } from './retro-toolbar.component';
@@ -53,6 +56,7 @@ export const END_SESSION_FAILED_MESSAGE = 'Failed to end the session';
   imports: [
     CommonModule,
     FormsModule,
+    ChatHostComponent,
     ConnectionStatusComponent,
     RetroColumnComponent,
     RetroToolbarComponent,
@@ -60,7 +64,7 @@ export const END_SESSION_FAILED_MESSAGE = 'Failed to end the session';
   ],
   template: `
     <div class="retro-board" [class.retro-board--horizontal]="isHorizontalLayout()">
-      <header class="retro-board__header">
+      <header #boardHeader class="retro-board__header">
         <div class="retro-board__header-left">
           <button
             class="retro-board__lobby-btn"
@@ -198,6 +202,10 @@ export const END_SESSION_FAILED_MESSAGE = 'Failed to end the session';
         </div>
       }
     </div>
+
+    <!-- The chat sits after .retro-board, outside every blocker wrapper, so the
+         launcher and the panel never turn inert (session-chat R1.5, D9). -->
+    <app-chat-host boardKind="retro" [sessionId]="sessionId()" />
   `,
   styles: [`
     :host {
@@ -402,6 +410,9 @@ export const END_SESSION_FAILED_MESSAGE = 'Failed to end the session';
       flex: 1;
       overflow: auto;
       min-height: 0;
+      /* Clearance for the fixed chat launcher, so the last cards scroll clear
+         of it (session-chat R12.5). A literal on the 4px scale (C10). */
+      padding-bottom: 88px;
     }
 
     /* Vertical layout: columns side-by-side in a horizontal row */
@@ -588,6 +599,8 @@ export class RetroBoardPageComponent implements OnInit, OnDestroy {
 
   private readonly endButton = viewChild<ElementRef<HTMLButtonElement>>('endBtn');
   private readonly cancelButton = viewChild<ElementRef<HTMLButtonElement>>('cancelBtn');
+  private readonly boardHeader = viewChild.required<ElementRef<HTMLElement>>('boardHeader');
+  private readonly overlayLayout = inject(BoardOverlayLayoutService);
 
   /** Session ID from route params */
   readonly sessionId = signal<string>('');
@@ -657,6 +670,13 @@ export class RetroBoardPageComponent implements OnInit, OnDestroy {
         return;
       }
       this.cancelButton()?.nativeElement.focus();
+    });
+
+    // The header bottom bounds the moderator-note balloon stack (session-chat
+    // R12.4). The header is always rendered, so it is tracked once, for the
+    // page's lifetime.
+    afterNextRender(() => {
+      this.overlayLayout.trackHeader(this.boardHeader().nativeElement, this.destroyRef);
     });
   }
 

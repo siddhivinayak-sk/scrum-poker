@@ -12,6 +12,13 @@ import {
   resolveFluidCardHeight,
 } from '../../../shared/types';
 import { getTemplateById } from './retro-templates';
+import { ChatRoom, Clock } from './chat-room';
+
+/** Optional {@link RetroSession} constructor settings. */
+export interface RetroSessionOptions {
+  /** Epoch-ms clock for chat `sentAt`, rate limiting and `lastActivityAt` on accept. Default `Date.now`. */
+  chatClock?: Clock;
+}
 
 /**
  * Encapsulates the per-session state for a retrospective board.
@@ -24,13 +31,23 @@ export class RetroSession {
   readonly createdAt: string;
   config: RetroConfiguration;
   lastActivityAt: string;
+  /**
+   * Chat state of this session (R18.6, R18.7). `completeBoard` never touches
+   * it, so chat keeps working after `retro:board:complete` (R18.9).
+   */
+  readonly chat: ChatRoom;
 
   private board: RetroBoard;
   private participants: Map<string, User> = new Map();
   private votesUsed: Map<string, number> = new Map(); // userId -> votes used
   private feelings: Map<string, FeelingCategory | null> = new Map(); // userId -> selected feeling
 
-  constructor(sessionId: string, ownerId: string, config: RetroConfiguration) {
+  constructor(
+    sessionId: string,
+    ownerId: string,
+    config: RetroConfiguration,
+    options?: RetroSessionOptions,
+  ) {
     this.sessionId = sessionId;
     this.ownerId = ownerId;
     this.config = {
@@ -43,6 +60,13 @@ export class RetroSession {
     const now = new Date().toISOString();
     this.createdAt = now;
     this.lastActivityAt = now;
+    // touch() reads new Date(), not the injected clock, so it is not reused (R18.10).
+    this.chat = new ChatRoom({
+      clock: options?.chatClock,
+      onAccepted: (atMs) => {
+        this.lastActivityAt = new Date(atMs).toISOString();
+      },
+    });
 
     // Initialize board state from template
     const template = getTemplateById(config.templateId);

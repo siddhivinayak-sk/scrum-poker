@@ -1,0 +1,24 @@
+/*
+ * Chat launcher attention pulse keyframes (session-chat, R24.1, R24.3, R12.8).
+ *
+ * Imported exactly once, from client/src/styles.scss, following the
+ * vote-callout keyframes precedent: emulated encapsulation does not scope
+ * @keyframes, and keeping them here keeps the launcher's component styles under the
+ * 6 kB anyComponentStyle warning.
+ *
+ * Only `transform` and `opacity` are animated. The launcher plays this as
+ * `chat-pulse 1200ms ease-out 0ms 3 both` (3 x 1,200 ms = 3,600 ms, matching
+ * chat-attention.ts). At scale 1.25 a 56 px ring reaches 7 px beyond the launcher
+ * edge (48 px: 6 px). Reduced motion is handled by not rendering the pulse span.
+ */
+@keyframes chat-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}

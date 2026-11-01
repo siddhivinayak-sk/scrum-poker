@@ -3,6 +3,9 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Runs the wall-clock latency spec (chat-fanout) in band after all other
+  // files, so parallel workers do not skew its 500 ms bound. See the file.
+  runner: '<rootDir>/jest-isolated-runner.ts',
   roots: ['<rootDir>/src', '<rootDir>/../shared'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],

@@ -113,6 +113,11 @@ class StubModeratorNoteBalloonComponent {
   readonly sessionId = input.required<string>();
 }
 
+@Component({ selector: 'app-chat-host', standalone: true, template: '' })
+class StubChatHostComponent {
+  readonly sessionId = input.required<string>();
+}
+
 // --- Fixtures ---
 
 const SESSION_ID = 'abc12345';
@@ -296,6 +301,7 @@ describe('SessionPokerPageComponent vote callout layer wiring', () => {
           StubIssueListPanelComponent,
           StubConnectionStatusComponent,
           StubModeratorNoteBalloonComponent,
+          StubChatHostComponent,
           layer,
         ],
       },

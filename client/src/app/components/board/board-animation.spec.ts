@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { signal, WritableSignal } from '@angular/core';
 import { EMPTY } from 'rxjs';
 import { BoardComponent } from './board.component';
@@ -7,6 +7,17 @@ import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
 import { User, CardValue } from '@shared/types';
+
+// The tests below replace window.matchMedia with a partial stub. Spec files share one window,
+// so put the original back after every test or later files inherit a list with no listeners.
+let originalMatchMedia: PropertyDescriptor | undefined;
+beforeEach(() => {
+  originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+});
+afterEach(() => {
+  if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+  else Reflect.deleteProperty(window, 'matchMedia');
+});
 
 /**
  * Card Flip Animation Tests
@@ -20,8 +31,14 @@ describe('Card Flip Animation', () => {
   let isRevealedSignal: WritableSignal<boolean>;
 
   beforeEach(() => {
-    // Mock matchMedia for StarsAnimationComponent
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as any;
+    // Mock matchMedia for StarsAnimationComponent. Installed as an own data property: Vitest's
+    // global `matchMedia` setter stores a plain assignment where restoring the descriptor
+    // in afterEach cannot remove it, so the stub would leak into later spec files.
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockReturnValue({ matches: false }),
+    });
 
     participantsSignal = signal<User[]>([]);
     selectionsSignal = signal<Map<string, CardValue>>(new Map());

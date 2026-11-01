@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
+import { WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT } from '@shared/types';
 import {
   ConnectionEvent,
   EpisodeEffect,
   EpisodeState,
   GIVE_UP_THRESHOLD,
+  PAYLOAD_TOO_LARGE_CLOSE_CODE,
   RESERVED_CLOSE_CODES,
   calculateBackoff,
   initialEpisodeState,
@@ -203,6 +205,8 @@ function assertEpisodeInvariants(steps: Step[]): RunTally {
           attempt: 0,
           episodeActive: false,
           gaveUp: false,
+          consecutiveTooLarge: 0,
+          haltedTooLarge: false,
         });
         // R11.27: returning to `connected` clears any connection notification.
         expect(countKind(step.effects, 'dismiss-connection-toasts')).toBe(1);
@@ -219,6 +223,8 @@ function assertEpisodeInvariants(steps: Step[]): RunTally {
           attempt: 0,
           episodeActive: false,
           gaveUp: false,
+          consecutiveTooLarge: 0,
+          haltedTooLarge: false,
         });
         break;
       }
@@ -290,6 +296,8 @@ describe('Property 18: Zero notifications before the give-up threshold, exactly 
           attempt: 0,
           episodeActive: false,
           gaveUp: false,
+          consecutiveTooLarge: 0,
+          haltedTooLarge: false,
         });
       }),
       { numRuns: 100 },
@@ -377,5 +385,269 @@ describe('Property 19: Reserved close codes end the episode without reconnection
     }
     expect(calculateBackoff(0)).toBe(1000);
     expect(calculateBackoff(5)).toBe(30000);
+  });
+});
+
+// Feature: session-chat, Property 33: Reconnection is bounded on repeated oversized-frame closes
+
+/**
+ * Harness-only event: the service calls `connect()`, which restarts the reducer from
+ * `initialEpisodeState` (R23.13). It is not a `ConnectionEvent`, so the harness
+ * applies it itself instead of passing it to `reduceEpisode`.
+ */
+type HarnessEvent = ConnectionEvent | { kind: 'connect' };
+
+/** Close codes: 1009 weighted so runs reach the limit, plus ordinary, reserved and other codes. */
+const closeCodeArb: fc.Arbitrary<number | undefined> = fc.oneof(
+  { arbitrary: fc.constant(PAYLOAD_TOO_LARGE_CLOSE_CODE), weight: 6 },
+  { arbitrary: fc.constantFrom(1006, 1000), weight: 3 },
+  { arbitrary: fc.constantFrom(...RESERVED_CLOSE_CODES), weight: 1 },
+  { arbitrary: fc.constantFrom(1001, 1011, 4001), weight: 1 },
+  { arbitrary: fc.constant(undefined), weight: 1 },
+);
+
+/**
+ * One chunk of a sequence. Attempts come in bursts of 1–10, so sequences also reach
+ * the give-up threshold and the "unchanged give-up behaviour" half is exercised.
+ */
+const tooLargeChunkArb: fc.Arbitrary<HarnessEvent[]> = fc.oneof(
+  {
+    arbitrary: closeCodeArb.map<HarnessEvent[]>((code) => [
+      code === undefined ? { kind: 'close' } : { kind: 'close', code },
+    ]),
+    weight: 6,
+  },
+  {
+    arbitrary: fc
+      .integer({ min: 1, max: GIVE_UP_THRESHOLD })
+      .map((n) => Array.from({ length: n }, (): HarnessEvent => ({ kind: 'attempt' }))),
+    weight: 3,
+  },
+  { arbitrary: fc.constant<HarnessEvent[]>([{ kind: 'open' }]), weight: 3 },
+  { arbitrary: fc.constant<HarnessEvent[]>([{ kind: 'manual-disconnect' }]), weight: 1 },
+  { arbitrary: fc.constant<HarnessEvent[]>([{ kind: 'connect' }]), weight: 1 },
+);
+
+const tooLargeSequenceArb: fc.Arbitrary<HarnessEvent[]> = fc
+  .array(tooLargeChunkArb, { minLength: 1, maxLength: 30, size: 'max' })
+  .map((chunks) => chunks.flat());
+
+/**
+ * Independent model of the 1009 rules: the length of the current run of consecutive
+ * 1009 closes (since the last non-1009 close, manual disconnect or `connect()`), the
+ * reconnections scheduled within that run, and whether the limit was reached.
+ */
+interface TooLargeModel {
+  run: number;
+  scheduledInRun: number;
+  openInRun: boolean;
+  halted: boolean;
+}
+
+function freshTooLargeModel(): TooLargeModel {
+  return { run: 0, scheduledInRun: 0, openInRun: false, halted: false };
+}
+
+interface TooLargeTally {
+  halts: number;
+  haltsAcrossOpen: number;
+  giveUps: number;
+}
+
+/** The effects a notification, navigation or reconnection would add. */
+function nonDismissEffects(effects: EpisodeEffect[]): EpisodeEffect[] {
+  return effects.filter((effect) => effect.kind !== 'dismiss-connection-toasts');
+}
+
+function assertBoundedReconnect(events: HarnessEvent[]): TooLargeTally {
+  const tally: TooLargeTally = { halts: 0, haltsAcrossOpen: 0, giveUps: 0 };
+  let state = initialEpisodeState;
+  let model = freshTooLargeModel();
+
+  for (const event of events) {
+    if (event.kind === 'connect') {
+      // R23.13: a new connection starts from the initial state with count 0.
+      state = initialEpisodeState;
+      model = freshTooLargeModel();
+      expect(state.consecutiveTooLarge).toBe(0);
+      expect(state.haltedTooLarge).toBe(false);
+      continue;
+    }
+
+    const before = state;
+    const { state: after, effects } = reduceEpisode(before, event);
+    state = after;
+
+    const scheduled = countKind(effects, 'schedule-reconnect');
+    const wasHalted = model.halted;
+    const isTooLargeClose = event.kind === 'close' && event.code === PAYLOAD_TOO_LARGE_CLOSE_CODE;
+
+    // R23.12: the too-large notification comes only from a 1009 close.
+    if (!isTooLargeClose) {
+      expect(countKind(effects, 'toast-payload-too-large')).toBe(0);
+    }
+    // R23.12/R23.13: navigation to login only ever comes from the give-up attempt.
+    if (event.kind !== 'attempt') {
+      expect(countKind(effects, 'navigate-login')).toBe(0);
+    }
+
+    // R23.12: once halted, nothing but a reset produces a reconnection, a notification
+    // or a navigation; closes and attempts produce no effect at all.
+    if (wasHalted && event.kind !== 'manual-disconnect') {
+      expect(nonDismissEffects(effects)).toEqual([]);
+      if (event.kind !== 'open') {
+        expect(effects).toEqual([]);
+      }
+      if (event.kind === 'close') {
+        expect(after.connection).toBe('disconnected');
+      }
+    }
+
+    switch (event.kind) {
+      case 'close': {
+        if (isTooLargeClose) {
+          model.run += 1;
+          model.scheduledInRun += scheduled;
+
+          if (!wasHalted && model.run === WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT) {
+            // R23.12: the limit ends the episode with exactly one notification,
+            // no navigation and no reconnection.
+            model.halted = true;
+            tally.halts += 1;
+            if (model.openInRun) {
+              tally.haltsAcrossOpen += 1;
+            }
+            expect(effects).toEqual([{ kind: 'toast-payload-too-large' }]);
+            expect(after.connection).toBe('disconnected');
+            expect(after.episodeActive).toBe(false);
+          } else if (!wasHalted) {
+            // R23.11: below the limit a 1009 close is an ordinary, silent drop.
+            expect(model.run).toBeLessThan(WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT);
+            if (before.gaveUp) {
+              expect(effects).toEqual([]);
+              expect(after.connection).toBe('disconnected');
+            } else {
+              expect(effects).toEqual([
+                { kind: 'dismiss-connection-toasts' },
+                { kind: 'schedule-reconnect', delayMs: calculateBackoff(before.attempt) },
+              ]);
+              expect(after.connection).toBe('reconnecting');
+              expect(after.episodeActive).toBe(true);
+            }
+          }
+
+          if (!model.halted) {
+            expect(after.consecutiveTooLarge).toBe(model.run);
+          }
+          // R23.14: at most limit − 1 reconnections within one run of 1009 closes.
+          expect(model.scheduledInRun).toBeLessThanOrEqual(WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT - 1);
+          break;
+        }
+
+        // R23.13: any other close code ends the run and resets the count.
+        model.run = 0;
+        model.scheduledInRun = 0;
+        model.openInRun = false;
+        expect(after.consecutiveTooLarge).toBe(0);
+
+        if (!wasHalted) {
+          if (isReservedCloseCode(event.code)) {
+            // R23.13: reserved-code behaviour is unchanged (R11.18).
+            expect(effects).toEqual([{ kind: 'toast-close-code', code: event.code }]);
+            expect(after.connection).toBe('disconnected');
+          } else if (before.gaveUp) {
+            expect(effects).toEqual([]);
+            expect(after.connection).toBe('disconnected');
+          } else {
+            expect(effects).toEqual([
+              { kind: 'dismiss-connection-toasts' },
+              { kind: 'schedule-reconnect', delayMs: calculateBackoff(before.attempt) },
+            ]);
+            expect(after.connection).toBe('reconnecting');
+          }
+        }
+        break;
+      }
+
+      case 'open': {
+        // R23.11: `open` keeps the count and the halt.
+        if (model.run > 0) {
+          model.openInRun = true;
+        }
+        expect(after.consecutiveTooLarge).toBe(before.consecutiveTooLarge);
+        expect(after.haltedTooLarge).toBe(before.haltedTooLarge);
+        expect(scheduled).toBe(0);
+        break;
+      }
+
+      case 'attempt': {
+        expect(scheduled).toBe(0);
+        expect(after.consecutiveTooLarge).toBe(before.consecutiveTooLarge);
+        if (!wasHalted && !before.gaveUp) {
+          if (before.attempt + 1 >= GIVE_UP_THRESHOLD) {
+            // R23.13: the give-up threshold and the login navigation are unchanged.
+            tally.giveUps += 1;
+            expect(effects).toEqual([{ kind: 'toast-give-up' }, { kind: 'navigate-login' }]);
+            expect(after.gaveUp).toBe(true);
+          } else {
+            expect(effects).toEqual([]);
+          }
+        }
+        break;
+      }
+
+      case 'manual-disconnect': {
+        // R23.13: a manual disconnect is not counted and resets count and halt.
+        model = freshTooLargeModel();
+        expect(effects).toEqual([]);
+        expect(after.consecutiveTooLarge).toBe(0);
+        expect(after.haltedTooLarge).toBe(false);
+        break;
+      }
+    }
+
+    expect(after.haltedTooLarge).toBe(model.halted);
+    // R23.14: no episode makes more than the give-up threshold of attempts.
+    expect(after.attempt).toBeGreaterThanOrEqual(0);
+    expect(after.attempt).toBeLessThanOrEqual(GIVE_UP_THRESHOLD);
+  }
+
+  return tally;
+}
+
+/**
+ * Property 33: Reconnection is bounded on repeated oversized-frame closes
+ *
+ * For any sequence of `open`, `attempt`, `manual-disconnect` and `close` events (codes
+ * mixing 1009, 1006, 1000, 4004, 4009, 4010 and others), fed to `reduceEpisode` from
+ * `initialEpisodeState`: at most `WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT − 1` reconnections
+ * are scheduled within any run of consecutive 1009 closes; reaching the limit ends the
+ * episode `disconnected` with exactly one too-large notification, no navigation and no
+ * later reconnection or notification; any non-1009 close, manual disconnect or new
+ * initial state resets the count while `open` does not; no episode makes more than 10
+ * attempts; reserved-code and give-up behaviour is unchanged.
+ *
+ * **Validates: Requirements 23.11, 23.12, 23.13, 23.14**
+ */
+describe('Property 33: Reconnection is bounded on repeated oversized-frame closes', () => {
+  const coverage: TooLargeTally = { halts: 0, haltsAcrossOpen: 0, giveUps: 0 };
+
+  it('R23.11–R23.14: bounds reconnections within a run of 1009 closes and halts once at the limit, over arbitrary event sequences', () => {
+    fc.assert(
+      fc.property(tooLargeSequenceArb, (events) => {
+        const tally = assertBoundedReconnect(events);
+        coverage.halts += tally.halts;
+        coverage.haltsAcrossOpen += tally.haltsAcrossOpen;
+        coverage.giveUps += tally.giveUps;
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  it('the generated sequences reach the 1009 limit (also across `open`) and the give-up threshold', () => {
+    // Coverage guard over the run above: without halts the bound is satisfied trivially.
+    expect(coverage.halts).toBeGreaterThan(0);
+    expect(coverage.haltsAcrossOpen).toBeGreaterThan(0);
+    expect(coverage.giveUps).toBeGreaterThan(0);
   });
 });

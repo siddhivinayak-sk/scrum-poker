@@ -1,9 +1,15 @@
 import request from 'supertest';
 import { app, server, wss } from '../server';
+import { sessionRegistry } from '../services/session-registry';
 
 afterAll((done) => {
   wss.close();
-  server.close(done);
+  server.close((err) => {
+    // The listen callback in server.ts starts this interval; left running it
+    // keeps the Jest worker alive after the suite finishes.
+    sessionRegistry.stopCleanupTimer();
+    done(err);
+  });
 });
 
 describe('Express server entry point', () => {
