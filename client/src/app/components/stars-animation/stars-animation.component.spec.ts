@@ -40,9 +40,13 @@ describe('StarsAnimationComponent', () => {
   let mockCtx: CanvasRenderingContext2D;
   let rafCallbacks: Array<(time: number) => void>;
   let rafId: number;
+  // Restored after every test: spec files share one window, and a leaked
+  // reduced-motion stub would change what later files see.
+  let originalMatchMedia: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
     mockMatchMedia(false); // Default: no reduced motion preference
     rafCallbacks = [];
     rafId = 0;
@@ -76,6 +80,8 @@ describe('StarsAnimationComponent', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+    else Reflect.deleteProperty(window, 'matchMedia');
   });
 
   describe('activation', () => {

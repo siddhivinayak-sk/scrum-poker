@@ -1,21 +1,158 @@
 import express from 'express';
-import http from 'http';
+import http, { IncomingMessage } from 'http';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
-import { WebSocketServer } from 'ws';
+import { Duplex } from 'stream';
+import { WebSocket, WebSocketServer } from 'ws';
 import { authRouter } from './routes/auth';
 import { sessionsRouter } from './routes/sessions';
 import { retroRouter } from './routes/retro-routes';
 import { sessionRegistry } from './services/session-registry';
-import { handleWebSocket, setWebSocketServer, removePokerConnection } from './websocket/handler';
-import { handleRetroWebSocket, removeRetroConnection } from './websocket/retro-handler';
+import {
+  handleWebSocket,
+  setWebSocketServer,
+  removePokerConnection,
+  getRegisteredPokerSessionId,
+} from './websocket/handler';
+import {
+  handleRetroWebSocket,
+  removeRetroConnection,
+  getRegisteredRetroSessionId,
+} from './websocket/retro-handler';
 import { attachLivenessProbe } from './websocket/liveness';
+import { BoardKind, WS_MAX_PAYLOAD_BYTES } from '../../shared/types';
+
+/**
+ * The part of an upgrade request URL that is safe to log: everything before the
+ * first `?`, so no query string (and no `token` / `sessionId`) is written (R23.1).
+ */
+export function redactUpgradeUrl(url: string | undefined): string {
+  if (url === undefined) return '';
+  const q = url.indexOf('?');
+  return q === -1 ? url : url.slice(0, q);
+}
+
+/**
+ * Attach an `error` listener to an accepted WebSocket and write at most one log
+ * line when the socket closes after an error (R23.7, R23.8).
+ *
+ * Only the Board_Kind, the registered session ID (from the client-map lookup,
+ * never the URL), the error `code` and the close code are written. The error
+ * message, frame payload and request URL are never stored or logged.
+ */
+/**
+ * The close code `ws` sends when its receiver rejects a frame, derived from the
+ * error's public `code` (ws 8 receiver: `WS_ERR_UNSUPPORTED_MESSAGE_LENGTH` and
+ * `WS_ERR_UNSUPPORTED_DATA_PAYLOAD_LENGTH` close with 1009, `WS_ERR_INVALID_UTF8`
+ * with 1007, every other `WS_ERR_*` with 1002).
+ *
+ * Needed because, after such an error, `ws` stops reading the socket and so never
+ * parses the client's close reply: its `close` event then reports 1006 even
+ * though the connection was closed with the code above (R23.8).
+ */
+function protocolErrorCloseCode(code: string | undefined): number | undefined {
+  if (code === undefined) return undefined;
+  if (code === 'WS_ERR_UNSUPPORTED_MESSAGE_LENGTH' || code === 'WS_ERR_UNSUPPORTED_DATA_PAYLOAD_LENGTH') {
+    return 1009;
+  }
+  if (code === 'WS_ERR_INVALID_UTF8') return 1007;
+  return code.startsWith('WS_ERR_') ? 1002 : undefined;
+}
+
+export function attachSocketErrorLog(
+  ws: WebSocket,
+  boardKind: BoardKind,
+  lookupSessionId: (ws: WebSocket) => string | undefined,
+  log: (line: string) => void,
+): void {
+  let errored = false;
+  let errorCode: string | undefined;
+  let sessionId: string | undefined;
+  let logged = false;
+
+  ws.on('error', (err: unknown) => {
+    if (errored) return;
+    errored = true;
+    const code = (err as { code?: unknown } | null)?.code;
+    errorCode = typeof code === 'string' ? code : undefined;
+    // The session ID as registered in the client map at the moment of the error.
+    sessionId = lookupSessionId(ws);
+  });
+
+  ws.on('close', (closeCode: number) => {
+    if (!errored || logged) return;
+    logged = true;
+    const parts = [`kind=${boardKind}`];
+    if (sessionId !== undefined) parts.push(`session=${sessionId}`);
+    if (errorCode !== undefined) parts.push(`code=${errorCode}`);
+    parts.push(`close=${protocolErrorCloseCode(errorCode) ?? closeCode}`);
+    log(`WebSocket error: ${parts.join(' ')}`);
+  });
+}
+
+export interface UpgradeHandlerOptions {
+  /** PUBLIC_PATH as derived from BASE_PATH (trailing slashes removed, '' for unset/empty/'/'). */
+  publicPath: string;
+  /** true only when PRESERVE_PATH is the exact string 'true'. */
+  preservePath: boolean;
+  pokerWss: WebSocketServer;
+  retroWss: WebSocketServer;
+  /** Defaults to console.log. */
+  log?: (line: string) => void;
+  /** Defaults to the client-map lookups of the poker and retro handlers. */
+  lookupSessionId?: {
+    poker(ws: WebSocket): string | undefined;
+    retro(ws: WebSocket): string | undefined;
+  };
+}
+
+/**
+ * Build the HTTP `upgrade` listener that logs one redacted line per request and
+ * routes it to the poker or retro WebSocketServer (R23.1, R23.3, R23.7).
+ */
+export function createUpgradeHandler(
+  o: UpgradeHandlerOptions,
+): (request: IncomingMessage, socket: Duplex, head: Buffer) => void {
+  const log = o.log ?? ((line: string) => console.log(line));
+  const lookup = o.lookupSessionId ?? {
+    poker: getRegisteredPokerSessionId,
+    retro: getRegisteredRetroSessionId,
+  };
+
+  return (request, socket, head) => {
+    const reqUrl = request.url || '';
+    log(`WebSocket upgrade request: ${redactUpgradeUrl(request.url)}`);
+
+    // When the ingress preserves the full path (PRESERVE_PATH=true), the URL
+    // includes the PUBLIC_PATH prefix (e.g. /scrum-poker/retro?...).
+    // Strip the prefix before checking the WS route so retro connections are
+    // not accidentally sent to the poker handler.
+    const routingPath =
+      o.preservePath && o.publicPath && reqUrl.startsWith(o.publicPath)
+        ? reqUrl.slice(o.publicPath.length)
+        : reqUrl;
+
+    if (routingPath.startsWith('/retro')) {
+      // Route retro WebSocket connections to the retro handler
+      o.retroWss.handleUpgrade(request, socket, head, (ws) => {
+        attachSocketErrorLog(ws, 'retro', (s) => lookup.retro(s), log);
+        o.retroWss.emit('connection', ws, request);
+      });
+    } else {
+      // All other paths go to the existing poker handler
+      o.pokerWss.handleUpgrade(request, socket, head, (ws) => {
+        attachSocketErrorLog(ws, 'poker', (s) => lookup.poker(s), log);
+        o.pokerWss.emit('connection', ws, request);
+      });
+    }
+  };
+}
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true });
-const retroWss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD_BYTES });
+const retroWss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD_BYTES });
 
 /**
  * BASE_PATH: the public URL prefix the browser sees (e.g. /scrum-poker).
@@ -29,32 +166,20 @@ const PUBLIC_PATH = rawBasePath === '/' ? '' : rawBasePath.replace(/\/+$/, '');
 const preservePath = process.env.PRESERVE_PATH === 'true';
 
 // Handle WebSocket upgrade manually — this gives us control over the path
-// and lets us log upgrade attempts for debugging
-server.on('upgrade', (request, socket, head) => {
-  const reqUrl = request.url || '';
-  console.log(`WebSocket upgrade request: ${reqUrl}`);
-
-  // When the ingress preserves the full path (PRESERVE_PATH=true), the URL
-  // includes the PUBLIC_PATH prefix (e.g. /scrum-poker/retro?...).
-  // Strip the prefix before checking the WS route so retro connections are
-  // not accidentally sent to the poker handler.
-  const routingPath =
-    preservePath && PUBLIC_PATH && reqUrl.startsWith(PUBLIC_PATH)
-      ? reqUrl.slice(PUBLIC_PATH.length)
-      : reqUrl;
-
-  if (routingPath.startsWith('/retro')) {
-    // Route retro WebSocket connections to the retro handler
-    retroWss.handleUpgrade(request, socket, head, (ws) => {
-      retroWss.emit('connection', ws, request);
-    });
-  } else {
-    // All other paths go to the existing poker handler
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
-  }
-});
+// and lets us log upgrade attempts (without the query string) for debugging
+server.on(
+  'upgrade',
+  createUpgradeHandler({
+    publicPath: PUBLIC_PATH,
+    preservePath,
+    pokerWss: wss,
+    retroWss,
+    lookupSessionId: {
+      poker: getRegisteredPokerSessionId,
+      retro: getRegisteredRetroSessionId,
+    },
+  }),
+);
 
 // Global middleware
 app.use(express.json());

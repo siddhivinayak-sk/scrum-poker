@@ -330,6 +330,11 @@ class StubModeratorNoteBalloonComponent {
   readonly sessionId = input.required<string>();
 }
 
+@Component({ selector: 'app-chat-host', standalone: true, template: '' })
+class StubChatHostComponent {
+  readonly sessionId = input.required<string>();
+}
+
 const POKER_WRAPPERS: readonly WrapperPlacement[] = [
   {
     selector: '.session-poker-page__board-area > .interaction-blocker',
@@ -443,6 +448,7 @@ async function renderPokerPage(): Promise<PageHarness> {
         ConnectionStatusComponent,
         StubVoteCalloutLayerComponent,
         StubModeratorNoteBalloonComponent,
+        StubChatHostComponent,
       ],
     },
   });

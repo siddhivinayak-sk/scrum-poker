@@ -3,12 +3,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
+  afterNextRender,
   computed,
   effect,
   inject,
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { resolveFunCallouts } from '@shared/types';
 import type { CalloutSection } from '@shared/callout-copy';
@@ -21,6 +24,7 @@ import {
   type DismissedCallout,
   type NoteDraft,
 } from '../../services/callout-persistence.service';
+import { BoardOverlayLayoutService } from '../../services/board-overlay-layout.service';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AnimationBudget, computeStagger, type ExitCause } from './callout-animation';
@@ -110,6 +114,7 @@ function sameNearModel(a: NearCalloutModel, b: NearCalloutModel): boolean {
     </p>
 
     <div
+      #layer
       class="vote-callout-layer"
       [class.vote-callout-layer--still]="reducedMotion()"
       [style.max-height.px]="maxHeightPx()"
@@ -170,11 +175,11 @@ function sameNearModel(a: NearCalloutModel, b: NearCalloutModel): boolean {
         position: fixed;
         z-index: 900; /* above content sections, below history backdrop 999, dialogs 1000, countdown 9999, toast 10000 */
         isolation: isolate; /* one stacking context; no descendant declares a z-index */
-        right: 16px;
-        bottom: 16px;
+        left: 16px; /* bottom-left corner; the Chat_Launcher owns bottom-right (session-chat R12.3) */
+        bottom: 16px; /* Bottom_Left_Base_Offset default; lifted inline by bottomPx (R12.12) */
         display: flex;
         flex-direction: column-reverse; /* near callout nearest the anchored edge (R7.6) */
-        align-items: flex-end;
+        align-items: flex-start;
         gap: 8px; /* R7.6 */
         max-width: min(360px, calc(100vw - 16px)); /* R7.7 */
         max-height: 40vh; /* R7.7 */
@@ -184,9 +189,7 @@ function sameNearModel(a: NearCalloutModel, b: NearCalloutModel): boolean {
 
       @media (max-width: 767.98px) {
         .vote-callout-layer {
-          left: 16px;
-          right: 16px;
-          max-width: calc(100vw - 32px); /* R8.1 */
+          max-width: calc(100vw - 88px); /* clears the Chat_Launcher (session-chat R12.3) */
           max-height: 45vh; /* R8.2 */
           overflow-y: auto; /* R8.2: scroll rather than grow */
         }
@@ -202,6 +205,10 @@ export class VoteCalloutLayerComponent {
   private readonly ws = inject(WebSocketService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly doc = inject(DOCUMENT);
+  private readonly layout = inject(BoardOverlayLayoutService);
+
+  /** The stacking layer element, measured so the balloon stack can sit above it (R12.4). */
+  private readonly layerEl = viewChild.required<ElementRef<HTMLElement>>('layer');
 
   /** The routed Poker_Session. Page wiring supplies it (task 14.1). */
   readonly sessionId = input.required<string>();
@@ -353,14 +360,23 @@ export class VoteCalloutLayerComponent {
       : Math.min(budget, Math.floor(height * WIDE_HEIGHT_RATIO));
   });
 
-  /** Lifts the layer above the keyboard when the layout viewport does not shrink for it. */
+  /**
+   * Bottom edge of the layer: the Bottom_Left_Base_Offset (session-chat R12.12), lifted further
+   * above an on-screen keyboard when the layout viewport does not shrink for it. `null` keeps the
+   * stylesheet's 16 px, so no inline `bottom` is written in the default case.
+   */
   protected readonly bottomPx = computed<number | null>(() => {
     const inset = this.keyboardInset();
-    return inset > 0 ? inset + EDGE_GAP_PX : null;
+    const keyboardBottom = inset > 0 ? inset + EDGE_GAP_PX : EDGE_GAP_PX;
+    const bottom = Math.max(this.layout.baseOffsetPx(), keyboardBottom);
+    return bottom === EDGE_GAP_PX ? null : bottom;
   });
 
   constructor() {
     this.setUpEnvironment();
+
+    // Report the layer's height so the Moderator_Note_Balloon stack can stack above it (R12.4).
+    afterNextRender(() => this.layout.trackCalloutLayer(this.layerEl().nativeElement, this.destroyRef));
 
     // A different routed session discards everything derived from the previous one, with no
     // exit flourish (R12.5).

@@ -135,6 +135,11 @@ class StubModeratorNoteBalloonComponent {
   readonly sessionId = input.required<string>();
 }
 
+@Component({ selector: 'app-chat-host', standalone: true, template: '' })
+class StubChatHostComponent {
+  readonly sessionId = input.required<string>();
+}
+
 describe('SessionPokerPageComponent export control', () => {
   const SESSION_ID = 'abc12345';
   const OWNER: User = {
@@ -288,6 +293,7 @@ describe('SessionPokerPageComponent export control', () => {
           StubConnectionStatusComponent,
           StubVoteCalloutLayerComponent,
           StubModeratorNoteBalloonComponent,
+          StubChatHostComponent,
         ],
       },
     });

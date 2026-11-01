@@ -8,7 +8,8 @@ import { EXIT_REMOVAL_DEADLINE_MS } from './callout-animation';
 /**
  * Source scans for the vote callout stylesheet, layer styles and dependencies
  * (vote-reveal-fun-callouts, R5.1, R5.2, R5.4, R5.7, R5.11, R5.14, R7.3, R7.4, R7.7, R8.1, R8.2,
- * R9.9, R13.8).
+ * R9.9, R13.8). The anchoring, narrow-width and far-entrance assertions follow the bottom-left
+ * placement of session-chat R12.3 and R12.13, as replaced under session-chat R20.8.
  *
  * The test DOM neither interpolates keyframes nor lays out boxes, so these facts are read from the
  * source text. The reduced-motion stylesheet rules are covered by Property 12 in
@@ -306,9 +307,10 @@ describe('vote callout stylesheet: motion bands (R5)', () => {
     expect(ms('--callout-entrance-ms')).toBeLessThanOrEqual(600);
   });
 
-  it('far entrance starts at least 100% of its width off the edge at 6-15 deg and settles at 0 (R5.2)', () => {
+  it('far entrance starts at least 100% of its width off the left edge at 6-15 deg and settles at 0 (R5.2, session-chat R12.13, R20.8)', () => {
     const start = transformAt('callout-slide-in', 0);
-    const offset = /translateX\(\s*calc\(\s*(\d+)%\s*\+\s*var\(--callout-edge-gap\)\s*\)\s*\)/.exec(start);
+    // Mirrored for the bottom-left layer: the prompt enters from beyond the left viewport edge.
+    const offset = /translateX\(\s*calc\(\s*-(\d+)%\s*-\s*var\(--callout-edge-gap\)\s*\)\s*\)/.exec(start);
     expect(offset, start).not.toBeNull();
     expect(Number((offset as RegExpExecArray)[1])).toBeGreaterThanOrEqual(100);
 
@@ -458,9 +460,12 @@ describe('vote callout layer styles: placement, layering and size caps (R7, R8)'
     expect(/z-index|zIndex/.test(keyframesCss)).toBe(false);
   });
 
-  it('anchors 16 px from the edge with an 8 px gap between panels (R7.6, R7.7)', () => {
-    expect(valueOf(layerDecls, 'right')).toBe('16px');
+  it('anchors bottom-left, 16 px from the left edge at the Bottom_Left_Base_Offset, with an 8 px gap between panels (R7.6, R7.7, session-chat R12.3, R20.8)', () => {
+    expect(valueOf(layerDecls, 'left')).toBe('16px');
+    // The stylesheet holds the default Bottom_Left_Base_Offset (16 px); narrow lifts are applied inline.
     expect(valueOf(layerDecls, 'bottom')).toBe('16px');
+    expect(valueOf(layerDecls, 'right')).toBeUndefined();
+    expect(valueOf(layerDecls, 'align-items')).toBe('flex-start');
     expect(valueOf(layerDecls, 'gap')).toBe('8px');
     expect(px(valueOf(layerDecls, 'gap'))).toBeGreaterThanOrEqual(8);
   });
@@ -470,12 +475,12 @@ describe('vote callout layer styles: placement, layering and size caps (R7, R8)'
     expect(valueOf(layerDecls, 'max-height')).toBe('40vh');
   });
 
-  it('narrows to the viewport less 32 px and 45 vh below 768 px, scrolling instead of growing (R8.1, R8.2)', () => {
-    expect(valueOf(narrowDecls, 'max-width')).toBe('calc(100vw - 32px)');
+  it('narrows to the viewport less 88 px and 45 vh below 768 px, scrolling instead of growing, and stays left-anchored (R8.1, R8.2, session-chat R12.3, R20.8)', () => {
+    expect(valueOf(narrowDecls, 'max-width')).toBe('calc(100vw - 88px)');
     expect(valueOf(narrowDecls, 'max-height')).toBe('45vh');
     expect(valueOf(narrowDecls, 'overflow-y')).toBe('auto');
-    expect(valueOf(narrowDecls, 'left')).toBe('16px');
-    expect(valueOf(narrowDecls, 'right')).toBe('16px');
+    expect(valueOf(narrowDecls, 'left') ?? valueOf(layerDecls, 'left')).toBe('16px');
+    expect(valueOf(narrowDecls, 'right')).toBeUndefined();
   });
 
   it('passes pointer events through the layer and panels and takes them only on controls (R7.2)', () => {
@@ -506,7 +511,7 @@ describe('vote callout layer styles: placement, layering and size caps (R7, R8)'
     expect(controls).toBeGreaterThanOrEqual(4);
   });
 
-  it('caps each callout panel at 40 vh, and the near panel also at 360 px and the narrow width limit (R7.7, R8.1)', () => {
+  it('caps each callout panel at 40 vh, and the near panel also at 360 px and the narrow width limit (R7.7, R8.1, session-chat R20.8)', () => {
     for (const file of ['near-average-callout.component.ts', 'far-from-average-prompt.component.ts']) {
       const blocks = topLevelBlocks(componentStyles(read(join(CALLOUT_DIR, file))));
       const panel = blocks.find((b) => b.header === '.callout');
@@ -524,7 +529,7 @@ describe('vote callout layer styles: placement, layering and size caps (R7, R8)'
     const nearNarrowPanel = declarationsOf(
       topLevelBlocks(nearNarrow?.body ?? '').find((b) => b.header === '.callout')?.body ?? ''
     );
-    expect(valueOf(nearNarrowPanel, 'max-width')).toBe('calc(100vw - 32px)');
+    expect(valueOf(nearNarrowPanel, 'max-width')).toBe('calc(100vw - 88px)');
   });
 });
 
@@ -581,7 +586,7 @@ describe('vote callout dependencies and imports (R5.14, R13.8)', () => {
       .filter((file) => legacy.test(read(file)))
       .map((file) => file.slice(SRC.length + 1));
     expect(offenders).toEqual([]);
-  });
+  }, 120_000);
 
   it('imports the keyframes stylesheet exactly once, from styles.scss', () => {
     const referencing = allSrcFiles

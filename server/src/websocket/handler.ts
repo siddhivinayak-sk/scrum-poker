@@ -15,10 +15,17 @@ import {
   CalloutNoteRejection,
   CalloutNoteAddedPayload,
   CalloutNoteRejectedPayload,
+  CHAT_MESSAGE_SEND,
+  CHAT_MESSAGE_ADDED,
+  CHAT_MESSAGE_REJECTED,
+  CHAT_HISTORY,
+  ChatHistoryPayload,
+  ChatMessageAddedPayload,
 } from '../../../shared/types';
 import { validateToken } from '../services/auth-service';
 import { sessionRegistry } from '../services/session-registry';
 import { GameSession } from '../services/game-session';
+import { evaluateChatSend, formatChatLogLine } from './chat-send';
 
 // sessionId -> userId -> Set<WebSocket>
 const sessionClients = new Map<string, Map<string, Set<WebSocket>>>();
@@ -251,6 +258,11 @@ function handleEvent(ws: WebSocket, user: User, sessionId: string, event: string
       // Deliberately not in the permission switch above: any participant may submit a
       // note; authorisation is by authorship, not by role.
       handleCalloutNoteSubmit(ws, user, sessionId, session, data);
+      break;
+    case CHAT_MESSAGE_SEND:
+      // Not in the permission switch above: every participant may chat, in every
+      // round state (R1.12, R15.8). Retro chat names fall through to `default`.
+      handleChatSend(ws, user, sessionId, session, data);
       break;
     default:
       sendError(ws, `Unknown event: ${event}`, 'UNKNOWN_EVENT');
@@ -625,6 +637,88 @@ function handleCalloutNoteSubmit(
 }
 
 /**
+ * Handle chat:message:send event.
+ *
+ * The author is the authenticated participant of this connection; author fields
+ * in the payload are never read (R15.1). Chat errors are caught here, logged by
+ * error name only and never answered (R19.6, R20.7).
+ */
+function handleChatSend(
+  ws: WebSocket,
+  user: User,
+  sessionId: string,
+  session: GameSession,
+  raw: unknown
+): void {
+  // A socket no longer registered for this user (closed, or its participant was
+  // removed) is dropped silently (R15.12, R15.13).
+  if (!sessionClients.get(sessionId)?.get(user.id)?.has(ws)) return;
+
+  try {
+    const outcome = evaluateChatSend(raw, {
+      connectionSessionId: sessionId,
+      author: { id: user.id, displayName: user.displayName },
+      room: session.chat,
+    });
+
+    switch (outcome.kind) {
+      case 'rejected':
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(createMessage(CHAT_MESSAGE_REJECTED, outcome.payload));
+        }
+        return;
+      case 'replay': {
+        const replayed: ChatMessageAddedPayload = { message: outcome.message };
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(createMessage(CHAT_MESSAGE_ADDED, replayed));
+        }
+        return;
+      }
+      case 'accepted': {
+        // Serialise before committing so a serialisation failure changes nothing (R20.7).
+        const added: ChatMessageAddedPayload = { message: outcome.message };
+        const frame = createMessage(CHAT_MESSAGE_ADDED, added);
+        outcome.commit();
+        const userMap = sessionClients.get(sessionId);
+        if (!userMap) return;
+        for (const sockets of userMap.values()) {
+          for (const target of sockets) {
+            if (target.readyState !== WebSocket.OPEN) continue;
+            try {
+              target.send(frame);
+            } catch {
+              // One failing socket must not stop delivery to the others (R15.5).
+            }
+          }
+        }
+        return;
+      }
+    }
+  } catch (err: unknown) {
+    console.error(
+      formatChatLogLine({
+        boardKind: 'poker',
+        sessionId,
+        event: CHAT_MESSAGE_SEND,
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+      })
+    );
+  }
+}
+
+/**
+ * Session ID of a poker connection, or undefined once the socket is no longer
+ * registered in the session client map (R23.8).
+ */
+export function getRegisteredPokerSessionId(ws: WebSocket): string | undefined {
+  const sid = wsSessionMap.get(ws);
+  if (!sid) return undefined;
+  const user = wsUserMap.get(ws);
+  if (!user) return undefined;
+  return sessionClients.get(sid)?.get(user.id)?.has(ws) ? sid : undefined;
+}
+
+/**
  * Broadcast a session:config-updated event to all participants in a session.
  * Called externally (e.g., from REST route) when config changes.
  */
@@ -708,6 +802,11 @@ export function handleWebSocket(ws: WebSocket, request: IncomingMessage): void {
   // Broadcast updated participant list to all clients in this session
   broadcastToSession(sessionId, 'participant:joined', { participants: session.getParticipants() });
 
+  // Send the chat history to the new socket only, after participant:joined so the
+  // existing message order is unchanged (R18.4, R18.5, C9).
+  const chatHistory: ChatHistoryPayload = { messages: session.chat.history() };
+  ws.send(createMessage(CHAT_HISTORY, chatHistory));
+
   // Listen for incoming messages
   ws.on('message', (rawData: WebSocket.RawData) => {
     try {
@@ -718,7 +817,10 @@ export function handleWebSocket(ws: WebSocket, request: IncomingMessage): void {
         return;
       }
 
-      handleEvent(ws, participant, sessionId, message.event, message.data || {});
+      // Chat gets the raw payload so null/primitives reach CHAT_INVALID (C1);
+      // every other event keeps the existing `|| {}` coercion (R20.6).
+      const data = message.event === CHAT_MESSAGE_SEND ? message.data : message.data || {};
+      handleEvent(ws, participant, sessionId, message.event, data);
     } catch {
       sendError(ws, 'Invalid message format: malformed JSON', 'INVALID_MESSAGE');
     }

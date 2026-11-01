@@ -23,9 +23,13 @@ function mockMatchMedia(matches: boolean): void {
 describe('CountdownOverlayComponent', () => {
   let fixture: ComponentFixture<CountdownOverlayComponent>;
   let component: CountdownOverlayComponent;
+  // Restored after every test: spec files share one window, and a leaked
+  // reduced-motion stub would change what later files see.
+  let originalMatchMedia: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
     mockMatchMedia(false); // Default: no reduced motion preference
 
     TestBed.configureTestingModule({
@@ -38,6 +42,8 @@ describe('CountdownOverlayComponent', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+    else Reflect.deleteProperty(window, 'matchMedia');
   });
 
   describe('countdown sequence (3, 2, 1)', () => {

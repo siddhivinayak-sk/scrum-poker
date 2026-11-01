@@ -321,7 +321,8 @@ export class IssueListPanelComponent {
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
     if (titles.length === 0) return;
-    this.ws.send('issue:add', { titles });
+    // Keep the text and the panel open when the frame was not handed to the socket (R23.16).
+    if (!this.ws.send('issue:add', { titles })) return;
     this.bulkText.set('');
     this.showBulkImport.set(false);
   }

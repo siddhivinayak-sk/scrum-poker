@@ -31,7 +31,7 @@ describe('IssueListPanelComponent', () => {
       currentRound: signal(null),
     };
 
-    mockWs = { send: vi.fn() };
+    mockWs = { send: vi.fn(() => true) };
 
     TestBed.configureTestingModule({
       imports: [IssueListPanelComponent],
@@ -108,6 +108,88 @@ describe('IssueListPanelComponent', () => {
 
       expect(component.bulkText()).toBe('');
       expect(component.showBulkImport()).toBe(false);
+    });
+  });
+
+  // R22.16, R23.16: bulk import keeps the text and the panel open when send() reports
+  // that the frame was not handed to the socket, and clears both when it was.
+  describe('bulk import text preservation', () => {
+    const multiLineText = 'Story 1\n  Story 2  \n\nStory 3';
+    const parsedTitles = ['Story 1', 'Story 2', 'Story 3'];
+
+    async function openBulkImportAndEnterText(text: string): Promise<void> {
+      fixture.detectChanges();
+      const toggle: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__toggle-bulk'
+      );
+      toggle.click();
+      fixture.detectChanges();
+      // Let ngModel's initial (async) writeValue('') land before typing, as it would for a user.
+      await fixture.whenStable();
+
+      const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__textarea'
+      );
+      textarea.value = text;
+      textarea.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    async function clickImport(): Promise<void> {
+      const importBtn: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__bulk-btn'
+      );
+      expect(importBtn.disabled).toBe(false);
+      importBtn.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('keeps Bulk_Import_Text and the panel open when send() returns false', async () => {
+      mockWs.send.mockReturnValue(false);
+      await openBulkImportAndEnterText(multiLineText);
+
+      await clickImport();
+
+      expect(mockWs.send).toHaveBeenCalledTimes(1);
+      expect(mockWs.send).toHaveBeenCalledWith('issue:add', { titles: parsedTitles });
+
+      expect(component.bulkText()).toBe(multiLineText);
+      expect(component.showBulkImport()).toBe(true);
+
+      const panel = fixture.nativeElement.querySelector('.issue-list-panel__bulk');
+      expect(panel).not.toBeNull();
+      const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__textarea'
+      );
+      expect(textarea.value).toBe(multiLineText);
+      const toggle: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__toggle-bulk'
+      );
+      expect(toggle.textContent?.trim()).toBe('Hide bulk import');
+    });
+
+    it('clears Bulk_Import_Text and closes the panel when send() returns true', async () => {
+      mockWs.send.mockReturnValue(true);
+      await openBulkImportAndEnterText(multiLineText);
+
+      await clickImport();
+
+      expect(mockWs.send).toHaveBeenCalledTimes(1);
+      expect(mockWs.send).toHaveBeenCalledWith('issue:add', { titles: parsedTitles });
+
+      expect(component.bulkText()).toBe('');
+      expect(component.showBulkImport()).toBe(false);
+
+      expect(fixture.nativeElement.querySelector('.issue-list-panel__bulk')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.issue-list-panel__textarea')).toBeNull();
+      const toggle: HTMLButtonElement = fixture.nativeElement.querySelector(
+        '.issue-list-panel__toggle-bulk'
+      );
+      expect(toggle.textContent?.trim()).toBe('Bulk import');
     });
   });
 

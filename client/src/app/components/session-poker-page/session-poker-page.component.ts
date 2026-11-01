@@ -1,4 +1,15 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  OnDestroy,
+  afterNextRender,
+  inject,
+  signal,
+  computed,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -18,7 +29,9 @@ import { IssueListPanelComponent } from '../issue-list-panel/issue-list-panel.co
 import { ConnectionStatusComponent } from '../connection-status/connection-status.component';
 import { VoteCalloutLayerComponent } from '../vote-callout/vote-callout-layer.component';
 import { ModeratorNoteBalloonComponent } from '../moderator-notes/moderator-note-balloon.component';
+import { ChatHostComponent } from '../chat/chat-host.component';
 import { ConnectionState } from '@shared/types';
+import { BoardOverlayLayoutService } from '../../services/board-overlay-layout.service';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
@@ -48,6 +61,7 @@ import { EstimateExportService } from '../../services/estimate-export.service';
     ConnectionStatusComponent,
     VoteCalloutLayerComponent,
     ModeratorNoteBalloonComponent,
+    ChatHostComponent,
   ],
   template: `
     @if (sessionNotFound()) {
@@ -60,7 +74,7 @@ import { EstimateExportService } from '../../services/estimate-export.service';
       </div>
     } @else {
       <div class="session-poker-page">
-        <header class="session-poker-page__header">
+        <header #pageHeader class="session-poker-page__header">
           <button
             class="session-poker-page__lobby-btn"
             type="button"
@@ -275,6 +289,12 @@ import { EstimateExportService } from '../../services/estimate-export.service';
           </div>
         }
       </div>
+
+      <!-- Sibling after .session-poker-page, outside every .interaction-blocker wrapper, so the
+           chat stays usable while interaction is paused and the callout layer stays the page's
+           last child (session-chat D9, R1.5). Rendered only in this session-found branch, so the
+           "Session Not Found" switch destroys it with its store (R1.3, R1.9). -->
+      <app-chat-host boardKind="poker" [sessionId]="sessionId()" />
     }
   `,
   styles: [
@@ -546,6 +566,8 @@ import { EstimateExportService } from '../../services/estimate-export.service';
         gap: 0.5rem;
         min-width: 0;
         overflow-y: auto;
+        /* Clears the fixed bottom-right Chat_Launcher (session-chat R12.5). */
+        padding-bottom: 88px;
       }
 
       /* The blocker wrapper carries the column layout the sections used to get from
@@ -604,6 +626,8 @@ import { EstimateExportService } from '../../services/estimate-export.service';
         border-radius: 12px;
         box-shadow: var(--shadow-md);
         padding: 0.5rem;
+        /* Clears the fixed bottom-right Chat_Launcher (session-chat R12.5). */
+        padding-bottom: 88px;
         overflow-x: hidden;
         overflow-y: auto;
       }
@@ -671,6 +695,8 @@ import { EstimateExportService } from '../../services/estimate-export.service';
       @media (max-width: 767px) {
         .session-poker-page {
           padding: 0.5rem;
+          /* The document scrolls here; clear the Chat_Launcher (session-chat R12.5). */
+          padding-bottom: 88px;
         }
 
         .session-poker-page__header {
@@ -755,6 +781,8 @@ import { EstimateExportService } from '../../services/estimate-export.service';
           z-index: 1000;
           overflow-y: auto;
           padding: 0 1rem 1rem;
+          /* Clears the fixed bottom-right Chat_Launcher (session-chat R12.5). */
+          padding-bottom: 88px;
         }
 
         .session-poker-page__overlay-header {
@@ -889,7 +917,21 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly basePath = inject(BasePathService);
   private readonly exportService = inject(EstimateExportService);
+  private readonly layout = inject(BoardOverlayLayoutService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly sessionState = inject(SessionStateService);
+
+  /** The page header; absent while "Session Not Found" is shown. */
+  private readonly pageHeader = viewChild<ElementRef<HTMLElement>>('pageHeader');
+
+  constructor() {
+    // Report the header's bottom edge so the Moderator_Note_Balloon stack stays below it
+    // (session-chat R12.4). Tracking ends with the page.
+    afterNextRender(() => {
+      const header = this.pageHeader();
+      if (header !== undefined) this.layout.trackHeader(header.nativeElement, this.destroyRef);
+    });
+  }
 
   readonly sessionId = signal<string>('');
   readonly sessionNotFound = signal<boolean>(false);

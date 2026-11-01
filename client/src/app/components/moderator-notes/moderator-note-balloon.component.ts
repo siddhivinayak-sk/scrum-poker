@@ -10,6 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { CalloutNoteAddedPayload } from '@shared/types';
 import { SessionStateService } from '../../services/session-state.service';
+import { BoardOverlayLayoutService } from '../../services/board-overlay-layout.service';
 
 /** How long a single balloon stays on screen before it auto-dismisses. */
 export const BALLOON_AUTO_DISMISS_MS = 9000;
@@ -40,9 +41,11 @@ export interface ModeratorNoteBalloon {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (visible()) {
+    @if (visible() && !layout.balloonHidden()) {
       <div
         class="note-balloons"
+        [style.bottom.px]="layout.balloonBottomPx()"
+        [style.max-height.px]="layout.balloonMaxHeightPx()"
         role="region"
         aria-label="Notes from participants who estimated differently"
       >
@@ -76,20 +79,25 @@ export interface ModeratorNoteBalloon {
         display: contents;
       }
 
+      /* bottom and max-height are bound from BoardOverlayLayoutService (session-chat R12.4) */
       .note-balloons {
         position: fixed;
         left: 16px;
-        bottom: 16px;
         z-index: 905; /* just above the vote-callout layer (900), below dialogs */
         display: flex;
         flex-direction: column-reverse; /* newest nearest the anchored edge */
         align-items: flex-start;
         gap: 8px;
         max-width: min(360px, calc(100vw - 32px));
-        max-height: 50vh;
         overflow-y: auto;
         overscroll-behavior: contain;
         pointer-events: none;
+      }
+
+      @media (max-width: 767.98px) {
+        .note-balloons {
+          max-width: calc(100vw - 88px); /* clears the Chat_Launcher (session-chat R12.4) */
+        }
       }
 
       .note-balloon {
@@ -183,6 +191,8 @@ export interface ModeratorNoteBalloon {
 export class ModeratorNoteBalloonComponent {
   private readonly sessionState = inject(SessionStateService);
   private readonly destroyRef = inject(DestroyRef);
+  /** Bottom-left arrangement: stack position above the Vote_Callout_Layer (R12.4, R12.11). */
+  protected readonly layout = inject(BoardOverlayLayoutService);
 
   /** The routed Poker_Session; balloons for any other session are ignored. */
   readonly sessionId = input.required<string>();

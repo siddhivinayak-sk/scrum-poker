@@ -555,3 +555,113 @@ export const CONNECTION_LABEL: Record<ConnectionState, string> = {
   reconnecting: 'Trying to restore connection',
   disconnected: 'Disconnected',
 };
+
+// --- Session chat ---
+
+export const CHAT_MESSAGE_MAX_LENGTH = 500;
+export const CHAT_RAW_TEXT_MAX_LENGTH = 2000;
+export const CHAT_HISTORY_LIMIT = 200;
+export const CHAT_RATE_LIMIT_COUNT = 5;
+export const CHAT_RATE_LIMIT_WINDOW_MS = 5000;
+export const CHAT_ACK_TIMEOUT_MS = 10000;
+export const CHAT_DEDUP_PER_AUTHOR = 50;
+
+export const CHAT_MESSAGE_SEND = 'chat:message:send';
+export const CHAT_MESSAGE_ADDED = 'chat:message:added';
+export const CHAT_MESSAGE_REJECTED = 'chat:message:rejected';
+export const CHAT_HISTORY = 'chat:history';
+export const RETRO_CHAT_MESSAGE_SEND = 'retro:chat:message:send';
+export const RETRO_CHAT_MESSAGE_ADDED = 'retro:chat:message:added';
+export const RETRO_CHAT_MESSAGE_REJECTED = 'retro:chat:message:rejected';
+export const RETRO_CHAT_HISTORY = 'retro:chat:history';
+
+export type BoardKind = 'poker' | 'retro';
+
+/** One plain-text chat message of a Board_Session. */
+export interface ChatMessage {
+  id: string;              // canonical UUID
+  seq: number;             // 1 … Number.MAX_SAFE_INTEGER
+  clientMessageId: string; // canonical UUID
+  authorId: string;        // non-empty
+  authorName: string;
+  text: string;
+  sentAt: string;          // YYYY-MM-DDTHH:mm:ss.sssZ
+}
+
+export type ChatRejection =
+  | 'CHAT_SESSION_MISMATCH'
+  | 'CHAT_INVALID'
+  | 'CHAT_EMPTY'
+  | 'CHAT_TOO_LONG'
+  | 'CHAT_RATE_LIMITED'
+  | 'CHAT_DUPLICATE';
+
+export interface ChatMessageSendPayload { sessionId: string; clientMessageId: string; text: string; }
+export interface ChatMessageAddedPayload { message: ChatMessage; }
+export interface ChatHistoryPayload { messages: ChatMessage[]; }
+export interface ChatMessageRejectedPayload {
+  clientMessageId: string;
+  code: ChatRejection;
+  message: string;
+  retryAfterMs?: number;   // present only for CHAT_RATE_LIMITED
+}
+
+/** Event names per Board_Kind, so shared client code never hard-codes a prefix. */
+export const CHAT_EVENTS: Readonly<Record<BoardKind, {
+  send: string; added: string; rejected: string; history: string;
+}>> = Object.freeze({
+  poker: Object.freeze({
+    send: CHAT_MESSAGE_SEND,
+    added: CHAT_MESSAGE_ADDED,
+    rejected: CHAT_MESSAGE_REJECTED,
+    history: CHAT_HISTORY,
+  }),
+  retro: Object.freeze({
+    send: RETRO_CHAT_MESSAGE_SEND,
+    added: RETRO_CHAT_MESSAGE_ADDED,
+    rejected: RETRO_CHAT_MESSAGE_REJECTED,
+    history: RETRO_CHAT_HISTORY,
+  }),
+});
+
+const CANONICAL_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CHAT_SENT_AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/** True for a UUID string in canonical 8-4-4-4-12 hex form, any version, any case. */
+export function isCanonicalUuid(value: unknown): value is string {
+  return typeof value === 'string' && CANONICAL_UUID_RE.test(value);
+}
+
+function isChatSentAt(value: unknown): value is string {
+  if (typeof value !== 'string' || !CHAT_SENT_AT_RE.test(value)) return false;
+  const time = new Date(value).getTime();
+  // Round trip rejects calendar-invalid strings such as month 13 or Feb 30.
+  return !Number.isNaN(time) && new Date(time).toISOString() === value;
+}
+
+/** True when the value has the shape of a ChatMessage (R13.7, R5.14). Extra fields are ignored. */
+export function isChatMessage(value: unknown): value is ChatMessage {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const v = value as Record<string, unknown>;
+  const seq = v['seq'];
+  const authorId = v['authorId'];
+  return (
+    isCanonicalUuid(v['id']) &&
+    typeof seq === 'number' && Number.isSafeInteger(seq) && seq >= 1 &&
+    isCanonicalUuid(v['clientMessageId']) &&
+    typeof authorId === 'string' && authorId.length > 0 &&
+    typeof v['authorName'] === 'string' &&
+    typeof v['text'] === 'string' &&
+    isChatSentAt(v['sentAt'])
+  );
+}
+
+// --- WebSocket transport limits (R23.4) ---
+
+export const WS_MAX_PAYLOAD_BYTES = 1048576;
+export const WS_PAYLOAD_TOO_LARGE_CLOSE_LIMIT = 3;
+
+// --- Deferred chat chunk loading (R20.12) ---
+
+export const CHAT_PANEL_LOAD_RETRY_DELAYS_MS: readonly number[] = Object.freeze([1000, 2000, 4000]);
+export const CHAT_PANEL_LOAD_ATTEMPT_TIMEOUT_MS = 10000;

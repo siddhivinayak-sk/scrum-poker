@@ -50,15 +50,18 @@
   }
 }
 
-/* Far prompt: slide in and settle. R5.2: starts fully off the right edge at 9deg (within 6-15), ends at 0. */
+/*
+ * Far prompt: slide in and settle. R5.2 / session-chat R12.13: the layer is anchored bottom-left,
+ * so the prompt starts fully off the left edge at -9deg (magnitude within 6-15) and ends at 0.
+ */
 @keyframes callout-slide-in {
   0% {
-    transform: translateX(calc(100% + var(--callout-edge-gap))) rotate(9deg);
+    transform: translateX(calc(-100% - var(--callout-edge-gap))) rotate(-9deg);
     opacity: 0;
   }
 
   65% {
-    transform: translateX(-2%) rotate(-1.2deg);
+    transform: translateX(2%) rotate(1.2deg); /* mirrored overshoot */
     opacity: 1;
   }
 

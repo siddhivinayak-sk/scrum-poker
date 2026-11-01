@@ -15,6 +15,13 @@ import {
   hasPermission as sharedHasPermission,
 } from '../../../shared/types';
 import { calculate } from './metrics-engine';
+import { ChatRoom, Clock } from './chat-room';
+
+/** Optional {@link GameSession} constructor settings. */
+export interface GameSessionOptions {
+  /** Epoch-ms clock for chat `sentAt`, rate limiting and `lastActivityAt` on accept. Default `Date.now`. */
+  chatClock?: Clock;
+}
 
 /** Input for {@link GameSession.addCalloutNote}. */
 export interface AddCalloutNoteInput {
@@ -49,6 +56,11 @@ export class GameSession {
   readonly createdAt: string;
   config: SessionConfiguration;
   lastActivityAt: string;
+  /**
+   * Chat state of this session (R18.6, R18.7). `clearHistory` and the
+   * `board:clear` path never touch it (R18.8).
+   */
+  readonly chat: ChatRoom;
 
   private participants: Map<string, User> = new Map();
   private currentRound: VotingRound | null = null;
@@ -56,13 +68,25 @@ export class GameSession {
   private votingDurationMs: number | undefined = undefined;
   private issueList: IssueItem[] = [];
 
-  constructor(sessionId: string, ownerId: string, config: SessionConfiguration) {
+  constructor(
+    sessionId: string,
+    ownerId: string,
+    config: SessionConfiguration,
+    options?: GameSessionOptions,
+  ) {
     this.sessionId = sessionId;
     this.ownerId = ownerId;
     this.config = { ...config };
     const now = new Date().toISOString();
     this.createdAt = now;
     this.lastActivityAt = now;
+    // touch() reads new Date(), not the injected clock, so it is not reused (R18.10).
+    this.chat = new ChatRoom({
+      clock: options?.chatClock,
+      onAccepted: (atMs) => {
+        this.lastActivityAt = new Date(atMs).toISOString();
+      },
+    });
   }
 
   /**

@@ -3,6 +3,9 @@
 /* Vote callout keyframes and motion tokens. Imported once, here (vote-reveal-fun-callouts). */
 @use 'app/components/vote-callout/vote-callout.keyframes' as *;
 
+/* Chat launcher attention pulse keyframes. Imported once, here (session-chat). */
+@use 'app/components/chat/chat.keyframes' as *;
+
 /* ===== Global CSS Custom Properties (Theme) ===== */
 :root {
   /* Primary palette */
@@ -51,6 +54,11 @@
   --toast-error: #e53e3e;
   --toast-warning: #dd6b20;
   --toast-info: #3182ce;
+
+  /* Chat message bubble for other participants' rows (session-chat R5.7).
+     #edf2f7 with --text-primary #1a1a2e is about 15.7:1. A plain hex, not
+     color-mix(), per the html2canvas note under "Washes, scrims and blends". */
+  --chat-bubble-other: #edf2f7;
 
   /* Card value color scale (cool → warm) */
   --card-color-0: #3182ce;
