@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
+import { FinalWeightGateService } from '../../services/final-weight-gate.service';
 import { IssueItem } from '@shared/types';
 import { issueTitleAccessibleName, issueTitleText } from './issue-title';
 
@@ -92,6 +93,9 @@ import { issueTitleAccessibleName, issueTitleText } from './issue-title';
               [attr.aria-label]="titleAccessibleName(issue)"
               >{{ titleText(issue) }}</span
             >
+            @if (finalWeightEnabled() && issue.finalWeight !== undefined) {
+              <span class="issue-list-panel__item-weight">Final weight: {{ issue.finalWeight }}</span>
+            }
             <span class="issue-list-panel__item-action">
               @if (canManage() && issue.status === 'pending') {
                 <button
@@ -245,6 +249,14 @@ import { issueTitleAccessibleName, issueTitleText } from './issue-title';
         line-height: 1.35;
       }
 
+      .issue-list-panel__item-weight {
+        flex: 0 0 auto;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+      }
+
       /* Fixed-width slot, always rendered, so every row's action shares one
          left edge and the title takes the remainder (R2.11, R2.13). */
       .issue-list-panel__item-action {
@@ -282,9 +294,12 @@ import { issueTitleAccessibleName, issueTitleText } from './issue-title';
 export class IssueListPanelComponent {
   private readonly sessionState = inject(SessionStateService);
   private readonly ws = inject(WebSocketService);
+  private readonly gate = inject(FinalWeightGateService);
 
   readonly issues = computed<IssueItem[]>(() => this.sessionState.issueList());
   readonly canManage = computed<boolean>(() => this.sessionState.hasIssuePermission());
+
+  readonly finalWeightEnabled = this.sessionState.finalWeightEnabled;
 
   readonly newIssueTitle = signal('');
   readonly bulkText = signal('');
@@ -328,7 +343,7 @@ export class IssueListPanelComponent {
   }
 
   selectIssue(issueId: string): void {
-    this.ws.send('issue:select', { issueId });
+    this.gate.guard(() => this.ws.send('issue:select', { issueId }));
   }
 
   isActiveIssue(issue: IssueItem): boolean {

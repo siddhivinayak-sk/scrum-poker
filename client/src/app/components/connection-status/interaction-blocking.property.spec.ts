@@ -24,7 +24,10 @@ import {
 } from '@shared/types';
 import { rulesOf } from '../../testing/declared-css';
 import { ConnectionStatusComponent } from './connection-status.component';
-import { SessionPokerPageComponent } from '../session-poker-page/session-poker-page.component';
+import {
+  FINAL_WEIGHT_PAGE_IMPORTS,
+  SessionPokerPageComponent,
+} from '../session-poker-page/session-poker-page.component';
 import { RetroBoardPageComponent } from '../retro-board/retro-board-page.component';
 import { UserMenuComponent } from '../user-menu/user-menu.component';
 import { SessionStateService } from '../../services/session-state.service';
@@ -367,6 +370,8 @@ async function renderPokerPage(): Promise<PageHarness> {
     currentRound: signal<VotingRound | null>(null),
     participants: signal<User[]>([POKER_USER]),
     sessionConfig: signal<SessionConfiguration | null>(null),
+    finalWeightEnabled: signal(false),
+    latestAccuracy: signal(null),
     countdownActive: signal<boolean>(false),
     currentUser: signal<User | null>(POKER_USER),
     isRevealed: signal<boolean>(false),
@@ -448,6 +453,7 @@ async function renderPokerPage(): Promise<PageHarness> {
         ConnectionStatusComponent,
         StubVoteCalloutLayerComponent,
         StubModeratorNoteBalloonComponent,
+        ...FINAL_WEIGHT_PAGE_IMPORTS,
         StubChatHostComponent,
       ],
     },

@@ -33,6 +33,20 @@ A real-time collaborative tool for agile teams. Includes **Scrum Poker** for sto
 - **Session settings**: Gear icon in the header opens a floating settings panel
 - **Facilitator flow**: Guided workflow prompts (idle → voting → revealed → next story)
 
+### Final Weight and Accuracy
+An optional, **off by default** feature. Sessions that leave it off behave exactly as before.
+
+- **Enable it**: Tick "Ask for final weight after each round" under Additional Options when creating a game, or toggle it later in the session settings panel (owner or moderators)
+- **How it works**: When a moderator ends a revealed round (Clear, Next, Submit Story, selecting another issue, or End Session), a dialog asks for the final weight. Candidate cards are the values people voted, plus suggestions tagged as most voted, nearest to the average, or between the lowest and highest vote. "Show all cards" offers the full ladder
+- **Skip or cancel**: **Skip** continues the action without a new weight. **Esc / Cancel** drops the action and the round stays revealed. Re-Vote never asks
+- **Accuracy balloon**: Once the weight is accepted, everyone sees a balloon with the final weight, the closest voter(s), and the furthest voter(s). Distance is the number of card steps between a vote and the final weight. The balloon closes by button, Esc, or after 20 seconds
+- **Funniest guess option**: The furthest voter gets a gentle, playful line marked "Just for fun". The moderator can untick "Show the funniest guess" in the dialog to hide it for that round. If every vote matches the weight, the team gets a "Hive mind!" celebration instead
+- **Session standings**: Expandable list of each voter's average distance across the session (a voter needs 2 scored rounds to be ranked)
+- **Accuracy leaderboard**: A ?? icon in the header strip opens a dialog ranking every voter from most accurate to least (lowest average distance to the final weight first), with medals for the top three and a separate "warming up" group for voters with fewer than 2 scored rounds
+- **Header icon**: Opens the dialog in edit mode for moderators (to set or correct a weight, also after Clear) and re-opens the latest balloon for everyone
+- **History and issues**: The final weight is shown next to history entries and issues, and is added to the export
+- **Who can set it**: Only participants whose role is `moderator`. Other users with Next or story-submit permission complete the action as usual and the round is saved without a weight
+
 ### Collaboration
 - **QR code sharing**: Generate a QR code for easy session joining on mobile
 - **Duplicate name prevention**: Case-insensitive name uniqueness within a session
@@ -196,9 +210,13 @@ scrum-poker-app/
 │   │   │   ├── feelings-summary-popup/ # Moderator feelings summary dialog
 │   │   │   ├── board/           # Poker board component
 │   │   │   ├── card-deck/       # Poker card deck
+│   │   │   ├── final-weight-dialog/        # Final weight picker (gate and edit modes)
+│   │   │   ├── final-weight-balloon/       # Accuracy result balloon and session standings
+│   │   │   ├── final-weight-header-button/ # Header icon for the final weight feature
 │   │   │   └── ...             # Other poker components
 │   │   ├── guards/          # Route guards (auth, session-auth, retro-auth)
-│   │   └── services/        # WebSocket, RetroWebSocket, Auth, State, RetroState, Feelings
+│   │   └── services/        # WebSocket, RetroWebSocket, Auth, State, RetroState, Feelings,
+│   │                        # FinalWeightGate (asks for the weight before round-ending actions)
 │   └── package.json
 ├── server/                  # Node.js backend
 │   ├── src/
@@ -220,6 +238,8 @@ scrum-poker-app/
 │   └── package.json
 ├── shared/                  # Shared TypeScript types
 │   ├── types.ts             # All shared types (poker + retro)
+│   ├── final-weight.ts      # Final weight options, distance, accuracy and standings
+│   ├── final-weight-copy.ts # Friendly copy pools for the accuracy balloon
 │   └── retro-templates.ts   # Template definitions for frontend
 ├── k8s/                     # Kubernetes manifests
 ├── Dockerfile               # Multi-stage Docker build
@@ -312,6 +332,7 @@ npm start
    - Issue permission (who can manage the story list)
    - Auto-reveal (flip automatically when everyone votes)
    - Countdown animation
+   - Ask for final weight after each round (off by default)
 6. Click **"Create Session"**
 
 ### Step 2: Invite Team Members
@@ -360,6 +381,16 @@ After reveal, the board shows:
 The **Facilitator Flow** panel shows contextual actions:
 - **"Re-Vote"** — Start a fresh vote on the same story (previous votes are discarded, not saved to history)
 - **"Clear & Next Story"** — Save the round to history, mark the issue as estimated, and move on
+
+### Step 8b: Set the Final Weight (Optional)
+
+Requires "Ask for final weight after each round" to be on (create form or settings gear).
+
+1. As a moderator, click **"Clear & Next Story"**, **Next**, **Submit Story**, an issue's **Estimate** button, or **End Session** on a revealed round
+2. In the dialog, pick the final weight (suggested cards are badged) or open **"Show all cards"**
+3. Optionally untick **"Show the funniest guess"**, then click confirm. **Skip** continues without a weight; **Esc / Cancel** abandons the action
+4. Everyone sees the accuracy balloon with the closest and furthest guesses. Use the header icon to re-open it, to correct the weight, or to set it after Clear
+5. Expand **"Session standings"** to see average distance per voter across rounds
 
 ### Step 9: Repeat
 
@@ -470,6 +501,16 @@ The moderator controls the flow using the toolbar buttons:
 | GET | `/api/sessions/:id/exists` | No | Check if session exists |
 | PUT | `/api/sessions/:id/config` | Yes | Update session config |
 
+`PUT /api/sessions/:id/config` is allowed for the owner and moderators. A non-boolean `finalWeightEnabled` is rejected with status `400` and body `{ "error": "INVALID_SETTING", "setting": "finalWeightEnabled" }`; nothing changes and nothing is broadcast.
+
+#### Poker Session Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `finalWeightEnabled` | boolean | off (key absent) | Ask the moderator for a final weight at the end of each revealed round and show the accuracy balloon. Only the boolean `true` turns it on |
+
+`GET /api/sessions/:id/export` appends a trailing `Final Weight` column to the summary rows when at least one history entry has a weight (`-` for entries without one). Without any weight the export is unchanged.
+
 #### Retrospective Sessions
 
 | Method | Path | Auth | Description |
@@ -501,12 +542,14 @@ The moderator controls the flow using the toolbar buttons:
 | `issue:select` | `{ issueId }` | Select issue for estimation |
 | `role:change` | `{ role }` | Change own role |
 | `history:clear` | `{}` | Clear all history |
+| `finalweight:submit` | `{ roundId, value, showFunniest? }` | Set the final weight for the revealed round or the newest history entry (moderator only) |
 
 **Server → Client:**
 
 | Event | Data | Description |
 |-------|------|-------------|
 | `session:state` | Full session state | Sent on connect/reconnect |
+| `finalweight:set` | `{ roundId, record, result }` | Final weight accepted; `result` is the accuracy result computed on the server |
 | `round:started` | `{ round }` | New voting round started |
 | `card:voted` | `{ userId }` | A participant voted (no value) |
 | `cards:revealed` | `{ selections, metrics }` | Cards revealed with results |
@@ -518,6 +561,23 @@ The moderator controls the flow using the toolbar buttons:
 | `session:config-updated` | `{ config }` | Config changed |
 | `auto:reveal-triggered` | `{ countdown }` | Auto-reveal initiated |
 | `error` | `{ message, code }` | Error notification |
+
+`finalweight:submit` can be rejected with an `error` carrying one of these codes:
+
+| Code | Meaning |
+|------|---------|
+| `UNAUTHORIZED` | Sender is not a moderator (same check as `board:clear`) |
+| `FEATURE_DISABLED` | `finalWeightEnabled` is off |
+| `ROUND_NOT_FOUND` | `roundId` is not the revealed current round or the newest history entry |
+| `INVALID_FINAL_WEIGHT` | Bad payload shape, or `value` is not a card on the session's voting system (`0` is valid) |
+
+`board:cleared` carries `finalWeight` inside the history entry only when a weight was set. The new fields are optional, so older clients are unaffected.
+
+##### End Session and the final weight
+
+With the feature on, a moderator who confirms End Session on a revealed round gets the dialog first. After confirm or skip, the client sends `board:clear` to archive the round and calls the REST delete once `board:cleared`, an `error`, or a 3 second timeout arrives, so the delete cannot overtake the archive. If the clear cannot be sent or fails, the session is still deleted as before.
+
+Limitation: deleting a session removes it together with its history, and the server does not broadcast on delete. The weight is recorded and the round archived, but other participants do not see a balloon and nothing is exported automatically. Use Export before ending the session to keep the data. Cancelling the dialog cancels End Session.
 
 #### Retrospective Events (path: `/retro`)
 
@@ -597,7 +657,7 @@ The Docker image is available on Docker Hub: [siddhivinayaksk/scrum-pocker](http
 docker pull siddhivinayaksk/scrum-pocker:latest
 
 # Or pull a specific version
-docker pull siddhivinayaksk/scrum-pocker:0.0.9
+docker pull siddhivinayaksk/scrum-pocker:0.0.10
 ```
 
 ```bash
@@ -623,7 +683,7 @@ with one row per configurable key, is in [`helm/scrum-poker/README.md`](helm/scr
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.9 \
+  --version 0.0.10 \
   --namespace scrum-poker \
   --create-namespace
 ```
@@ -650,9 +710,9 @@ square brackets glob:
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.9 \
+  --version 0.0.10 \
   --namespace scrum-poker --create-namespace \
-  --set image.tag=0.0.9 \
+  --set image.tag=0.0.10 \
   --set ingress.hosts[0].host=poker.example.com \
   --set ingress.hosts[0].paths[0].path=/scrum-poker \
   --set config.basePath=/scrum-poker
@@ -666,7 +726,7 @@ replicaCount: 1                       # 1 is the only supported value, see the n
 
 image:
   repository: siddhivinayaksk/scrum-pocker
-  tag: "0.0.9"                        # "" falls back to the chart's appVersion
+  tag: "0.0.10"                        # "" falls back to the chart's appVersion
   pullPolicy: IfNotPresent
 
 service:
@@ -708,7 +768,7 @@ resources:
 
 ```bash
 helm install scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker \
-  --version 0.0.9 \
+  --version 0.0.10 \
   --namespace scrum-poker --create-namespace \
   -f my-values.yaml
 ```
@@ -767,7 +827,7 @@ The values overridden most often, with the real defaults from
   `service.sessionAffinity: ClientIP`. Multi-replica is therefore permitted by the chart but
   operationally wrong. `autoscaling.enabled` **is** blocked and must stay `false`:
   `autoscaling.enabled: must be false (got true); the application holds poker and retro session state in process memory and supports exactly one replica`.
-- Render before installing. `helm template scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.9 -f my-values.yaml`
+- Render before installing. `helm template scrum-poker oci://ghcr.io/siddhivinayak-sk/charts/scrum-poker --version 0.0.10 -f my-values.yaml`
   exercises the same schema and guards offline.
 
 #### Publishing the chart
@@ -898,3 +958,6 @@ The project uses a combination of:
 12. Summary icon visibility matches moderator status
 13. Popup displays participants in case-insensitive alphabetical order
 
+## Support This Project
+
+If you find this project useful, consider supporting my open-source work by [buying me a coffee](https://buymeacoffee.com/siddhivinayak.sk). Your support is greatly appreciated! ☕

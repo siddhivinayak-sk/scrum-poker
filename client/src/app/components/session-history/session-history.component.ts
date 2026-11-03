@@ -106,6 +106,10 @@ export function deriveHistorySummary(entry: HistoryEntry): HistorySummary {
                 </span>
               </button>
 
+              @if (finalWeightEnabled() && entry.finalWeight !== undefined) {
+                <p class="session-history__final-weight">Final weight: {{ entry.finalWeight.value }}</p>
+              }
+
               @if (isExpanded(entry.roundId)) {
                 <div class="session-history__detail" role="region" aria-label="Round details">
                   <h4>Votes</h4>
@@ -287,6 +291,14 @@ export function deriveHistorySummary(entry: HistoryEntry): HistorySummary {
         color: #595959;
       }
 
+      .session-history__final-weight {
+        margin: 0;
+        padding: 0 0.5rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #333;
+      }
+
       .session-history__detail {
         padding: 0.5rem 0.75rem 0.75rem;
         background: #fafafa;
@@ -367,6 +379,7 @@ export class SessionHistoryComponent {
   });
 
   readonly history = this.sessionState.history;
+  readonly finalWeightEnabled = this.sessionState.finalWeightEnabled;
 
   showConfirmDialog(): boolean {
     return this._showConfirmDialog();

@@ -183,6 +183,19 @@ import {
                     Show a 3-2-1 countdown before revealing cards
                   </span>
                 </label>
+
+                <label class="toggle-label">
+                  <input
+                    type="checkbox"
+                    formControlName="finalWeightEnabled"
+                    aria-label="Enable final weight and accuracy"
+                  />
+                  <span class="toggle-text">Final weight and accuracy</span>
+                  <span class="toggle-description">
+                    Moderators pick a final weight after cards are revealed, and the team sees
+                    whose estimate was closest
+                  </span>
+                </label>
               </fieldset>
             </div>
           }
@@ -519,6 +532,7 @@ export class SessionCreatePageComponent implements OnInit {
       issuePermission: ['moderator-only', Validators.required],
       autoReveal: [false],
       countdownAnimation: [true],
+      finalWeightEnabled: [false],
     });
   }
 
@@ -543,6 +557,7 @@ export class SessionCreatePageComponent implements OnInit {
       },
       autoReveal: formValue.autoReveal ?? false,
       countdownAnimation: formValue.countdownAnimation ?? false,
+      finalWeightEnabled: formValue.finalWeightEnabled === true,
       ...(formValue.gameName?.trim() ? { gameName: formValue.gameName.trim() } : {}),
     };
 

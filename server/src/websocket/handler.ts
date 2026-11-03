@@ -21,7 +21,17 @@ import {
   CHAT_HISTORY,
   ChatHistoryPayload,
   ChatMessageAddedPayload,
+  FINAL_WEIGHT_SUBMIT,
+  FINAL_WEIGHT_SET,
+  FinalWeightRejection,
+  resolveFinalWeightEnabled,
 } from '../../../shared/types';
+import {
+  computeAccuracy,
+  scoringLadder,
+  votesFromRound,
+  FinalWeightSetPayload,
+} from '../../../shared/final-weight';
 import { validateToken } from '../services/auth-service';
 import { sessionRegistry } from '../services/session-registry';
 import { GameSession } from '../services/game-session';
@@ -200,6 +210,12 @@ function handleEvent(ws: WebSocket, user: User, sessionId: string, event: string
         return;
       }
       break;
+    case FINAL_WEIGHT_SUBMIT:
+      if (!isModerator(session, user.id)) {
+        sendError(ws, 'Only moderators can set the final weight', 'UNAUTHORIZED');
+        return;
+      }
+      break;
     case 'round:revote':
       if (!session.hasPermission(user.id, 'reveal')) {
         sendError(ws, 'You do not have permission to trigger a re-vote', 'UNAUTHORIZED');
@@ -253,6 +269,9 @@ function handleEvent(ws: WebSocket, user: User, sessionId: string, event: string
       break;
     case 'issue:select':
       handleIssueSelect(ws, user, sessionId, session, data);
+      break;
+    case FINAL_WEIGHT_SUBMIT:
+      handleFinalWeightSubmit(ws, sessionId, session, data);
       break;
     case CALLOUT_NOTE_SUBMIT:
       // Deliberately not in the permission switch above: any participant may submit a
@@ -567,6 +586,80 @@ function handleIssueSelect(ws: WebSocket, user: User, sessionId: string, session
     broadcastToSession(sessionId, 'issue:list-updated', { issues: session.getIssueList() });
   } catch (err: any) {
     sendError(ws, err.message, 'ISSUE_NOT_FOUND');
+  }
+}
+
+interface ValidFinalWeightSubmit {
+  roundId: string;
+  value: string | number;
+  showFunniest: boolean;
+}
+
+/** Narrow an unknown payload to a well-shaped final weight submission. */
+function parseFinalWeightSubmit(data: unknown): ValidFinalWeightSubmit | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const { roundId, value, showFunniest } = data as Record<string, unknown>;
+  if (typeof roundId !== 'string' || roundId.length === 0) return null;
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  if (showFunniest !== undefined && typeof showFunniest !== 'boolean') return null;
+  return { roundId, value, showFunniest: showFunniest ?? false };
+}
+
+function sendFinalWeightError(ws: WebSocket, code: FinalWeightRejection, message: string): void {
+  sendError(ws, message, code);
+}
+
+/**
+ * Handle finalweight:submit event (moderator check happens in handleEvent).
+ */
+function handleFinalWeightSubmit(
+  ws: WebSocket,
+  sessionId: string,
+  session: GameSession,
+  data: unknown
+): void {
+  const parsed = parseFinalWeightSubmit(data);
+  if (parsed === null) {
+    sendFinalWeightError(ws, 'INVALID_FINAL_WEIGHT', 'Invalid final weight payload');
+    return;
+  }
+
+  if (!resolveFinalWeightEnabled(session.config.finalWeightEnabled)) {
+    sendFinalWeightError(ws, 'FEATURE_DISABLED', 'Final weight is not enabled for this session');
+    return;
+  }
+
+  const ladder = scoringLadder(session.config.votingSystem);
+  // Strict match (no coercion): the ladder entry itself becomes the typed value.
+  const ladderValue = ladder.find((card) => card === parsed.value);
+  if (ladderValue === undefined) {
+    sendFinalWeightError(ws, 'INVALID_FINAL_WEIGHT', 'Value is not on the voting scale');
+    return;
+  }
+
+  try {
+    const outcome = session.setFinalWeight(parsed.roundId, ladderValue, parsed.showFunniest);
+    const votes =
+      outcome.target === 'current' && outcome.round !== undefined
+        ? votesFromRound(outcome.round.selections, session.getParticipants())
+        : outcome.entry?.participants ?? [];
+    const result = computeAccuracy(votes, outcome.record);
+    const payload: FinalWeightSetPayload = {
+      roundId: parsed.roundId,
+      record: outcome.record,
+      result,
+    };
+    broadcastToSession(sessionId, FINAL_WEIGHT_SET, payload);
+    if (outcome.issue !== undefined) {
+      broadcastToSession(sessionId, 'issue:list-updated', { issues: session.getIssueList() });
+    }
+  } catch (err: unknown) {
+    const code = (err as { code?: unknown } | null)?.code;
+    if (code === 'ROUND_NOT_FOUND') {
+      sendFinalWeightError(ws, 'ROUND_NOT_FOUND', 'Round not found');
+      return;
+    }
+    throw err;
   }
 }
 

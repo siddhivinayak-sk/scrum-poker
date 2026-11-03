@@ -13,6 +13,7 @@ function createMockServices() {
     participants: signal([]).asReadonly(),
     selections: signal(new Map()).asReadonly(),
     isRevealed: signal(false).asReadonly(),
+    finalWeightEnabled: signal(false).asReadonly(),
     metrics: signal(null).asReadonly(),
     history: signal([]).asReadonly(),
     currentUser: signal(null).asReadonly(),

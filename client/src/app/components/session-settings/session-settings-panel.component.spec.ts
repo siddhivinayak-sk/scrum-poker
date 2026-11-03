@@ -748,6 +748,7 @@ describe('SessionSettingsPanelComponent', () => {
         issuePermission: { mode: 'all-players', allowedUserIds: [] },
         autoReveal: true,
         countdownAnimation: false,
+        finalWeightEnabled: false,
       });
 
       req.flush({ config: { ...config, votingSystem: 'power-of-2' } });

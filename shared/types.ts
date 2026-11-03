@@ -27,6 +27,8 @@ export interface VotingRound {
   votingDurationMs?: number; // computed on reveal: revealedAt - startedAt
   /** Optional so every existing round literal and stored record stays valid. Plain array, never a Map. */
   calloutNotes?: CalloutNote[];
+  /** Set by the Weight_Moderator while revealed; omitted when unset. */
+  finalWeight?: FinalWeightRecord;
 }
 
 // Participant Vote
@@ -57,7 +59,33 @@ export interface HistoryEntry {
   votingDurationMs?: number; // total voting time for this round
   /** Plain array, never a Map, so it survives JSON.stringify/parse unchanged. */
   calloutNotes?: CalloutNote[];
+  /** Copied from the round by clearBoard; omitted when no weight was set. */
+  finalWeight?: FinalWeightRecord;
 }
+
+// --- Final Weight ---
+
+/** The weight chosen for a round, stored with the voting system in force at that time. */
+export interface FinalWeightRecord {
+  value: ExtendedCardValue;
+  votingSystem: VotingSystemType;
+  showFunniest: boolean;
+}
+
+export const FINAL_WEIGHT_SUBMIT = 'finalweight:submit';
+export const FINAL_WEIGHT_SET = 'finalweight:set';
+
+export interface FinalWeightSubmitPayload {
+  roundId: string;
+  value: ExtendedCardValue;
+  showFunniest?: boolean;
+}
+
+// FinalWeightSetPayload ({ roundId, record, result: AccuracyResult }) lives in
+// shared/final-weight.ts, next to AccuracyResult, to avoid a circular import.
+
+/** Rejection codes sent through the existing `error` event `{ message, code }`. */
+export type FinalWeightRejection = 'FEATURE_DISABLED' | 'ROUND_NOT_FOUND' | 'INVALID_FINAL_WEIGHT';
 
 // --- Callout Notes ---
 
@@ -252,6 +280,8 @@ export interface SessionConfiguration {
    * non-boolean value is treated as `true` (see `resolveFunCallouts`).
    */
   funCallouts?: boolean;  // default: true
+  /** Optional final weight and accuracy feature. Absent means off (see `resolveFinalWeightEnabled`). */
+  finalWeightEnabled?: boolean;
 }
 
 // Default session configuration
@@ -273,6 +303,11 @@ export function resolveFunCallouts(value: unknown): boolean {
   return typeof value === 'boolean' ? value : true;
 }
 
+/** True only for the boolean `true`; everything else (absent, "true", 1) is off. */
+export function resolveFinalWeightEnabled(value: unknown): boolean {
+  return value === true;
+}
+
 // Issue item in the session's issue list
 export interface IssueItem {
   id: string;           // UUID
@@ -280,6 +315,8 @@ export interface IssueItem {
   status: 'pending' | 'estimating' | 'estimated';
   historyEntryId?: string;  // Links to the HistoryEntry when estimated
   createdAt: string;    // ISO 8601
+  /** Final weight copied from the round; omitted when unset. */
+  finalWeight?: ExtendedCardValue;
 }
 
 // Session summary for the "my sessions" list

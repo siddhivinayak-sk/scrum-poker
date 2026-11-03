@@ -12,6 +12,8 @@ describe('IssueListPanelComponent', () => {
   let mockSessionState: {
     issueList: ReturnType<typeof signal<IssueItem[]>>;
     hasIssuePermission: ReturnType<typeof signal<boolean>>;
+    finalWeightEnabled: ReturnType<typeof signal<boolean>>;
+    isRevealed: ReturnType<typeof signal<boolean>>;
     currentRound: ReturnType<typeof signal<any>>;
   };
   let mockWs: { send: ReturnType<typeof vi.fn> };
@@ -28,6 +30,8 @@ describe('IssueListPanelComponent', () => {
     mockSessionState = {
       issueList: signal<IssueItem[]>([]),
       hasIssuePermission: signal(true),
+      finalWeightEnabled: signal(false),
+      isRevealed: signal(false),
       currentRound: signal(null),
     };
 

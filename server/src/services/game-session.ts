@@ -9,6 +9,7 @@ import {
   SessionConfiguration,
   GameSessionState,
   IssueItem,
+  FinalWeightRecord,
   CalloutNote,
   CalloutNoteRejection,
   NOTE_MAX_LENGTH,
@@ -297,6 +298,11 @@ export class GameSession {
       calloutNotes: this.currentRound.calloutNotes ? [...this.currentRound.calloutNotes] : undefined,
     };
 
+    // Key is omitted entirely when no weight was set.
+    if (this.currentRound.finalWeight !== undefined) {
+      entry.finalWeight = { ...this.currentRound.finalWeight };
+    }
+
     // Prepend to history (newest-first)
     this.history.unshift(entry);
 
@@ -324,11 +330,68 @@ export class GameSession {
 
     // Discard current round without saving to history
     const storyDescription = this.currentRound.storyDescription;
+    const issue = this.issueList.find(
+      (i) => i.status === 'estimating' && i.title === storyDescription,
+    );
+    if (issue) {
+      delete issue.finalWeight;
+    }
     this.currentRound = null;
     this.votingDurationMs = undefined;
 
     // Start a fresh round with the same story
     return this.startRound(storyDescription);
+  }
+
+  /**
+   * Set the final weight for the current revealed round, or else for the newest
+   * history entry only. Last valid submit wins. Throws an Error with
+   * `code === 'ROUND_NOT_FOUND'` when neither matches `roundId`.
+   */
+  setFinalWeight(
+    roundId: string,
+    value: ExtendedCardValue,
+    showFunniest: boolean,
+  ): {
+    target: 'current' | 'history';
+    record: FinalWeightRecord;
+    round?: VotingRound;
+    entry?: HistoryEntry;
+    issue?: IssueItem;
+  } {
+    const record: FinalWeightRecord = {
+      value,
+      votingSystem: this.config.votingSystem,
+      showFunniest,
+    };
+
+    const round = this.currentRound;
+    if (round !== null && round.id === roundId && round.status === 'revealed') {
+      round.finalWeight = record;
+      const issue = this.issueList.find(
+        (i) => i.status === 'estimating' && i.title === round.storyDescription,
+      );
+      if (issue) {
+        issue.finalWeight = value;
+      }
+      this.touch();
+      return { target: 'current', record, round, issue };
+    }
+
+    const entry = this.history[0];
+    if (entry !== undefined && entry.roundId === roundId) {
+      entry.finalWeight = record;
+      const issue = this.issueList.find((i) => i.historyEntryId === roundId);
+      if (issue) {
+        issue.finalWeight = value;
+      }
+      this.touch();
+      return { target: 'history', record, entry, issue };
+    }
+
+    const err = new Error('Round not found') as Error & { code: string };
+    err.code = 'ROUND_NOT_FOUND';
+    throw err;
   }
 
   /**

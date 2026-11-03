@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
+import { FinalWeightGateService } from '../../services/final-weight-gate.service';
 
 export type FlowState = 'idle' | 'voting' | 'revealed';
 
@@ -195,6 +196,7 @@ export function computeProgress(issues: { status: string }[]): FlowProgress {
 export class FacilitatorFlowComponent {
   private readonly sessionState = inject(SessionStateService);
   private readonly ws = inject(WebSocketService);
+  private readonly gate = inject(FinalWeightGateService);
 
   readonly hasRevealPermission = computed(() => this.sessionState.hasRevealPermission());
 
@@ -223,14 +225,14 @@ export class FacilitatorFlowComponent {
   }
 
   clearAndNext(): void {
-    this.ws.send('board:clear', {});
+    this.gate.guard(() => this.ws.send('board:clear', {}));
   }
 
   nextIssue(): void {
     const issues = this.sessionState.issueList();
     const nextPending = issues.find(i => i.status === 'pending');
     if (nextPending) {
-      this.ws.send('issue:select', { issueId: nextPending.id });
+      this.gate.guard(() => this.ws.send('issue:select', { issueId: nextPending.id }));
     }
   }
 }

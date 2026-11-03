@@ -1,0 +1,639 @@
+{
+  "pbtResults": {
+    "1.7 Property and unit tests for the copy pools": {
+      "status": "passed",
+      "lastRunTimestamp": 1793536592317
+    },
+    "2.2 `GameSession` tests, including weight `0`, re-vote, and unchanged entry shape": {
+      "status": "passed",
+      "lastRunTimestamp": 1793536814616
+    }
+  },
+  "executionHistory": {
+    "0.1 Run `cd server && npm test` and `cd client && npm test`; record the results so later failures can be attributed": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517148
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534527008
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534788424
+      }
+    ],
+    "1.1 Extend `shared/types.ts`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517235
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534797382
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534917139
+      }
+    ],
+    "1.2 Create `shared/final-weight.ts`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517377
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534921188
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536448608
+      }
+    ],
+    "1.3 Create `shared/final-weight-copy.ts`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517458
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534921721
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536449180
+      }
+    ],
+    "1.4 Add the optional trailing `Final Weight` column to `shared/estimate-export.ts`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517543
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534922288
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536449747
+      }
+    ],
+    "1.5 Property tests for `resolveFinalWeightEnabled` and `buildFinalWeightOptions`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517619
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536453856
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536603850
+      }
+    ],
+    "1.6 Property tests for `computeAccuracy`, distance and `computeStandings`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517686
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536454611
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536604594
+      }
+    ],
+    "1.7 Property and unit tests for the copy pools": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517788
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536455377
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536605403
+      }
+    ],
+    "1.8 Export tests: byte-identical without weights, `Final Weight` last column with weights": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517873
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536455972
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536606455
+      }
+    ],
+    "1.9 Checkpoint - Shared layer": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534517949
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537368877
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537451717
+      }
+    ],
+    "2.1 `GameSession.setFinalWeight`, `clearBoard` copy (omit key when unset), issue copy, `revote` issue reset": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518032
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536619812
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536718731
+      }
+    ],
+    "2.2 `GameSession` tests, including weight `0`, re-vote, and unchanged entry shape": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518106
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536723708
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536884779
+      }
+    ],
+    "2.3 `SessionRegistry.createSession` (coerce only when the key is present) and `PUT /:id/config` validation": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518184
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536619978
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536719366
+      }
+    ],
+    "2.4 `handleFinalWeightSubmit` with moderator pre-check, `unknown` guards, validation, server-side result, broadcasts": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518251
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536724188
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536885406
+      }
+    ],
+    "2.5 Handler, route and registry tests": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518330
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793536889407
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537363587
+      }
+    ],
+    "2.6 Checkpoint - Server": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518418
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537369045
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537452221
+      }
+    ],
+    "3.1 `session-state.service.ts`: `finalWeightEnabled`, `latestAccuracy`, `finalweight:set` handling (patch round and history), restore without announcement, clear on `history:cleared`, setting off and stale `round:started`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518507
+      },
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537453054
+      },
+      {
+        "executionId": "f1f1c055-3216-4067-96b6-85a743999192",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793538850645
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589164896
+      }
+    ],
+    "3.2 `FinalWeightGateService` with `guard` and `guardEndSession`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518586
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589170740
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589480220
+      }
+    ],
+    "3.3 Service tests: confirm, skip, cancel, timeout, each rejection, dialog closing when the round changes, feature turned off": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518668
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589488517
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589915995
+      }
+    ],
+    "4.1 Create-board toggle and settings-panel toggle": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518743
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589488690
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589916097
+      }
+    ],
+    "4.2 Tests: default unchecked, payload, existing toggles untouched": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518828
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589923200
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793598116730
+      }
+    ],
+    "4.3 `FinalWeightDialogComponent` (gate and edit modes)": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518901
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589488821
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589916634
+      }
+    ],
+    "4.4 `FinalWeightBalloonComponent` with standings and reduced-motion support; check placement against chat, callout layer and note balloon": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534518986
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589489092
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589917236
+      }
+    ],
+    "4.5 `FinalWeightHeaderButtonComponent` and mounting in `session-poker-page`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519066
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589923870
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793598117246
+      }
+    ],
+    "4.6 Route every entry point through the gate": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519150
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793598124215
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793600326929
+      }
+    ],
+    "4.7 Show the weight in session history and the issue list": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519241
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793600332994
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793600842687
+      }
+    ],
+    "4.8 Component and integration tests": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519329
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793600849673
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602235147
+      }
+    ],
+    "4.9 Checkpoint - Client": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519405
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602242770
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602489007
+      }
+    ],
+    "5.1 Update `README.md`: feature section, settings, WS events, REST validation, How to Use step, project structure additions, the End Session behaviour and its limitation": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519492
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602242970
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602489297
+      }
+    ],
+    "6.1 `helm/scrum-poker/Chart.yaml`: `version: 0.0.10`, `appVersion: \"0.0.10\"`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519585
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602496533
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690237683
+      }
+    ],
+    "6.2 Replace `0.0.9` release references in `helm/scrum-poker/README.md` and `README.md`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519725
+      },
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602496941
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690123179
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690132127
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690238823
+      }
+    ],
+    "6.3 Verify: `helm lint helm/scrum-poker` and `bash tests/helm-smoke.test.sh` if tools are available; build `server` and `client`": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519875
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690245855
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690504635
+      }
+    ],
+    "7. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534519933
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690511761
+      },
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690876944
+      }
+    ],
+    "0. Baseline": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793534788529
+      }
+    ],
+    "1. Shared contract and pure logic": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537451829
+      }
+    ],
+    "2. Server": [
+      {
+        "executionId": "f9e592b8-3289-4e90-87bf-fdfcee90a1d4",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793537452320
+      }
+    ],
+    "3. Client state and gate": [
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793589916215
+      }
+    ],
+    "4. Client UI": [
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602489473
+      }
+    ],
+    "5. Documentation": [
+      {
+        "executionId": "f5fee1ee-78ba-4c38-907f-57295ebc0dea",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793602489606
+      }
+    ],
+    "6. Release 0.0.10": [
+      {
+        "executionId": "b2534a63-b129-44b0-a00f-c9db5c9954a1",
+        "chatSessionId": "sess_d7798db2-d99d-4583-a162-8f454c37fd58",
+        "timestamp": 1793690504789
+      }
+    ]
+  }
+}

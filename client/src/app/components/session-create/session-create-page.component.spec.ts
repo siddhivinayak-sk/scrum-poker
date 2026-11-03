@@ -260,6 +260,7 @@ describe('SessionCreatePageComponent', () => {
           issuePermission: { mode: 'moderator-only', allowedUserIds: [] },
           autoReveal: false,
           countdownAnimation: true,
+          finalWeightEnabled: false,
         },
       });
       expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
@@ -295,6 +296,7 @@ describe('SessionCreatePageComponent', () => {
           issuePermission: { mode: 'select-specific', allowedUserIds: [] },
           autoReveal: true,
           countdownAnimation: false,
+          finalWeightEnabled: false,
         },
       });
 

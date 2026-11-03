@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
+import { FinalWeightGateService } from '../../services/final-weight-gate.service';
 
 @Component({
   selector: 'app-story-manager',
@@ -186,6 +187,7 @@ import { WebSocketService } from '../../services/websocket.service';
 export class StoryManagerComponent {
   private readonly sessionState = inject(SessionStateService);
   private readonly wsService = inject(WebSocketService);
+  private readonly gate = inject(FinalWeightGateService);
 
   storyDescription = '';
   private readonly _showValidationError = signal(false);
@@ -259,8 +261,10 @@ export class StoryManagerComponent {
       return;
     }
     this._showValidationError.set(false);
-    this.wsService.send('story:submit', { storyDescription: description });
-    this.storyDescription = '';
+    this.gate.guard(() => {
+      this.wsService.send('story:submit', { storyDescription: description });
+      this.storyDescription = '';
+    });
   }
 
   revealCards(): void {
@@ -268,7 +272,7 @@ export class StoryManagerComponent {
   }
 
   clearBoard(): void {
-    this.wsService.send('board:clear', {});
+    this.gate.guard(() => this.wsService.send('board:clear', {}));
   }
 
   revote(): void {
