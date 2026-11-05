@@ -16,7 +16,7 @@ import { Component, input, output, signal, WritableSignal } from '@angular/core'
 import { ActivatedRoute, provideRouter, RouterLink } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { SessionPokerPageComponent } from './session-poker-page.component';
+import { FINAL_WEIGHT_PAGE_IMPORTS, SessionPokerPageComponent } from './session-poker-page.component';
 import { SessionStateService } from '../../services/session-state.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { AuthService } from '../../services/auth.service';
@@ -214,6 +214,8 @@ describe('SessionPokerPageComponent export control', () => {
       currentRound: signal<VotingRound | null>(null),
       participants: signal<User[]>([OWNER]),
       sessionConfig: signal<SessionConfiguration | null>(null),
+      finalWeightEnabled: signal(false),
+      latestAccuracy: signal(null),
       countdownActive: signal<boolean>(false),
       currentUser: currentUserSignal,
       isRevealed: signal<boolean>(false),
@@ -293,6 +295,7 @@ describe('SessionPokerPageComponent export control', () => {
           StubConnectionStatusComponent,
           StubVoteCalloutLayerComponent,
           StubModeratorNoteBalloonComponent,
+          ...FINAL_WEIGHT_PAGE_IMPORTS,
           StubChatHostComponent,
         ],
       },

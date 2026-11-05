@@ -11,6 +11,7 @@ describe('FacilitatorFlowComponent', () => {
   let mockSessionState: {
     currentRound: ReturnType<typeof signal<VotingRound | null>>;
     isRevealed: ReturnType<typeof signal<boolean>>;
+    finalWeightEnabled: ReturnType<typeof signal<boolean>>;
     hasRevealPermission: ReturnType<typeof signal<boolean>>;
     issueList: ReturnType<typeof signal<IssueItem[]>>;
   };
@@ -20,6 +21,7 @@ describe('FacilitatorFlowComponent', () => {
     mockSessionState = {
       currentRound: signal<VotingRound | null>(null),
       isRevealed: signal(false),
+      finalWeightEnabled: signal(false),
       hasRevealPermission: signal(true),
       issueList: signal<IssueItem[]>([]),
     };

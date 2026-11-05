@@ -210,6 +210,16 @@ sessionsRouter.put('/:sessionId/config', (req: Request, res: Response) => {
     }
   }
 
+  // finalWeightEnabled must be a boolean; owner or moderator may change it
+  // (authorisation already checked above). Reject before any state change.
+  if (
+    Object.prototype.hasOwnProperty.call(incoming, 'finalWeightEnabled') &&
+    typeof incoming.finalWeightEnabled !== 'boolean'
+  ) {
+    res.status(400).json({ error: 'INVALID_SETTING', setting: 'finalWeightEnabled' });
+    return;
+  }
+
   const updatedConfig = session.updateConfig(incoming);
 
   // Broadcast config update to all participants in the session

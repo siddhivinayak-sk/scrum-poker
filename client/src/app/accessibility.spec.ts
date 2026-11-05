@@ -28,6 +28,7 @@ function createMockSessionState(overrides: Record<string, any> = {}) {
     metrics: signal<VotingMetrics | null>(null).asReadonly(),
     history: signal<HistoryEntry[]>([]).asReadonly(),
     currentUser: signal<User | null>(null).asReadonly(),
+    finalWeightEnabled: signal(false).asReadonly(),
     issueList: signal([]).asReadonly(),
     sessionConfig: signal(null).asReadonly(),
     hasRevealPermission: signal(false).asReadonly(),

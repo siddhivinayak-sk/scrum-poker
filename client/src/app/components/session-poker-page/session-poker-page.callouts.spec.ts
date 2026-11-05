@@ -20,7 +20,7 @@ import { ActivatedRoute, provideRouter, RouterLink } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Observable, Subject } from 'rxjs';
-import { SessionPokerPageComponent } from './session-poker-page.component';
+import { FINAL_WEIGHT_PAGE_IMPORTS, SessionPokerPageComponent } from './session-poker-page.component';
 import { VoteCalloutLayerComponent, COUNTDOWN_DURATION_MS } from '../vote-callout/vote-callout-layer.component';
 import { EXIT_REMOVAL_DEADLINE_MS } from '../vote-callout/callout-animation';
 import { SessionStateService } from '../../services/session-state.service';
@@ -252,6 +252,8 @@ describe('SessionPokerPageComponent vote callout layer wiring', () => {
             currentRound,
             participants,
             sessionConfig,
+            finalWeightEnabled: signal(false),
+            latestAccuracy: signal(null),
             countdownActive,
             currentUser,
             isRevealed,
@@ -301,6 +303,7 @@ describe('SessionPokerPageComponent vote callout layer wiring', () => {
           StubIssueListPanelComponent,
           StubConnectionStatusComponent,
           StubModeratorNoteBalloonComponent,
+          ...FINAL_WEIGHT_PAGE_IMPORTS,
           StubChatHostComponent,
           layer,
         ],

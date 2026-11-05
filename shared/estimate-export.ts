@@ -31,6 +31,9 @@ export const SUMMARY_HEADER: readonly string[] = [
   'Completed At',
 ];
 
+/** Optional trailing summary column, present only when some entry has a final weight. */
+export const FINAL_WEIGHT_HEADER = 'Final Weight';
+
 /** Header naming the Vote_Row fields, emitted once per completed estimate. */
 export const VOTE_HEADER: readonly string[] = ['Story', 'Participant', 'Vote'];
 
@@ -157,11 +160,15 @@ export function formatVotingDuration(ms: number | undefined): string {
  * Distribution and outlier count always carry their real values: only the
  * average, mode and spread are blanked on insufficient data.
  */
-export function buildSummaryRow(entry: HistoryEntry, votingSystem: VotingSystemType): string[] {
+export function buildSummaryRow(
+  entry: HistoryEntry,
+  votingSystem: VotingSystemType,
+  includeFinalWeight = false
+): string[] {
   const metrics = entry.metrics;
   const insufficient = metrics.insufficientData;
 
-  return [
+  const fields = [
     entry.storyDescription,
     String(entry.participants.length),
     String(metrics.numericVoteCount),
@@ -172,7 +179,13 @@ export function buildSummaryRow(entry: HistoryEntry, votingSystem: VotingSystemT
     String(metrics.outliers.length),
     formatVotingDuration(entry.votingDurationMs),
     entry.completedAt,
-  ].map(quoteCsvField);
+  ];
+
+  if (includeFinalWeight) {
+    fields.push(entry.finalWeight === undefined ? NOT_AVAILABLE : String(entry.finalWeight.value));
+  }
+
+  return fields.map(quoteCsvField);
 }
 
 /**
@@ -202,10 +215,14 @@ export function buildVoteRows(entry: HistoryEntry): string[][] {
  * `completedAt` order its summary row, one vote header, and its vote rows.
  */
 export function buildEstimateExportRows(input: EstimateExportInput): string[][] {
-  const rows: string[][] = [[...SUMMARY_HEADER].map(quoteCsvField)];
+  const includeFinalWeight = input.history.some((entry) => entry.finalWeight !== undefined);
+  const summaryHeader = includeFinalWeight
+    ? [...SUMMARY_HEADER, FINAL_WEIGHT_HEADER]
+    : [...SUMMARY_HEADER];
+  const rows: string[][] = [summaryHeader.map(quoteCsvField)];
 
   for (const entry of sortCompletedEstimates(input.history)) {
-    rows.push(buildSummaryRow(entry, input.votingSystem));
+    rows.push(buildSummaryRow(entry, input.votingSystem, includeFinalWeight));
     // A fresh array per estimate, so a consumer mutating one record cannot
     // reach the vote header of another.
     rows.push([...VOTE_HEADER].map(quoteCsvField));

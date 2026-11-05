@@ -19,12 +19,27 @@ import {
   CALLOUT_NOTE_REJECTED,
   isCalloutNote,
   normaliseCalloutNotes,
+  FINAL_WEIGHT_SET,
+  type FinalWeightRecord,
 } from '@shared/types';
+import {
+  computeAccuracy,
+  votesFromRound,
+  type AccuracyResult,
+  type FinalWeightSetPayload,
+} from '@shared/final-weight';
 import { WebSocketService } from './websocket.service';
 import { CalloutPersistenceService } from './callout-persistence.service';
 import { CalloutCopyStoreService } from './callout-copy-store.service';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+
+/** Accuracy of the most recent final weight, shown by the balloon and the board. */
+export interface LatestAccuracy {
+  roundId: string;
+  record: FinalWeightRecord;
+  result: AccuracyResult;
+}
 
 @Injectable({ providedIn: 'root' })
 export class SessionStateService implements OnDestroy {
@@ -39,6 +54,9 @@ export class SessionStateService implements OnDestroy {
   private activeSessionId: string | null = null;
   private readonly noteAdded = new Subject<CalloutNoteAddedPayload>();
   private readonly noteRejected = new Subject<CalloutNoteRejectedPayload>();
+  private readonly accuracyAnnounced = new Subject<LatestAccuracy>();
+  /** (roundId, value, showFunniest) of the last announcement; identical repeats are not announced again. */
+  private lastAnnouncedKey: string | null = null;
 
   private readonly _currentRound = signal<VotingRound | null>(null);
   private readonly _participants = signal<User[]>([]);
@@ -54,6 +72,7 @@ export class SessionStateService implements OnDestroy {
   private readonly _ownerId = signal<string | null>(null);
   private readonly _calloutNotes = signal<ReadonlyMap<string, readonly CalloutNote[]>>(new Map());
   private readonly _stateSessionId = signal<string | null>(null);
+  private readonly _latestAccuracy = signal<LatestAccuracy | null>(null);
 
   /**
    * Id of the session the held state belongs to (from the last `session:state`). The callout layer
@@ -82,6 +101,12 @@ export class SessionStateService implements OnDestroy {
   readonly votedUserIds: Signal<Set<string>> = this._votedUserIds.asReadonly();
   readonly issueList: Signal<IssueItem[]> = this._issueList.asReadonly();
   readonly ownerId: Signal<string | null> = this._ownerId.asReadonly();
+
+  readonly finalWeightEnabled = computed(() => this._sessionConfig()?.finalWeightEnabled === true);
+  /** Accuracy of the newest final weight (announced or restored); null when none or the setting is off. */
+  readonly latestAccuracy: Signal<LatestAccuracy | null> = this._latestAccuracy.asReadonly();
+  /** Emits when a `finalweight:set` should be announced (balloon); never on restore. */
+  readonly accuracyAnnounced$: Observable<LatestAccuracy> = this.accuracyAnnounced.asObservable();
 
   readonly hasRevealPermission = computed(() => {
     const user = this._currentUser();
@@ -136,6 +161,7 @@ export class SessionStateService implements OnDestroy {
     this._issueList.set([]);
     this._ownerId.set(null);
     this._calloutNotes.set(new Map());
+    this.clearAccuracy();
     this.activeSessionId = null;
     this._stateSessionId.set(null);
     // R12.7: sign-out clears the callout dismissals and draft, purely locally.
@@ -156,7 +182,7 @@ export class SessionStateService implements OnDestroy {
 
         // Extract session config from GameSessionState
         if (state.config) {
-          this._sessionConfig.set(state.config);
+          this.applyConfig(state.config);
         }
 
         // Track the session owner from GameSessionState
@@ -184,6 +210,8 @@ export class SessionStateService implements OnDestroy {
         // The full sync is authoritative for notes (R13.12): malformed collections arrive as [].
         this._calloutNotes.set(notesByRound);
 
+        this.restoreAccuracy();
+
         // Update current user from participants list
         this.syncCurrentUser(state.participants);
       })
@@ -198,6 +226,11 @@ export class SessionStateService implements OnDestroy {
         this._isRevealed.set(false);
         this._metrics.set(null);
         this._votedUserIds.set(new Set());
+        // A weight whose round never reached history was discarded by a re-vote.
+        const latest = this._latestAccuracy();
+        if (latest && !this._history().some((e) => e.roundId === latest.roundId)) {
+          this.clearAccuracy();
+        }
       })
     );
 
@@ -248,6 +281,7 @@ export class SessionStateService implements OnDestroy {
         this._isRevealed.set(false);
         this._metrics.set(null);
         this._votedUserIds.set(new Set());
+        this.restoreAccuracy();
       })
     );
 
@@ -286,6 +320,7 @@ export class SessionStateService implements OnDestroy {
     this.subscriptions.push(
       this.ws.on<Record<string, never>>('history:cleared').subscribe(() => {
         this._history.set([]);
+        this.clearAccuracy();
         // Notes of the cleared history rounds go with them; keep only the current round's.
         const currentId = this._currentRound()?.id;
         const kept = new Map<string, readonly CalloutNote[]>();
@@ -300,7 +335,7 @@ export class SessionStateService implements OnDestroy {
       this.ws
         .on<{ config: SessionConfiguration }>('session:config-updated')
         .subscribe(({ config }) => {
-          this._sessionConfig.set(config);
+          this.applyConfig(config);
         })
     );
 
@@ -337,6 +372,14 @@ export class SessionStateService implements OnDestroy {
       })
     );
 
+    // Final weight set or corrected (broadcast to every client in the session)
+    this.subscriptions.push(
+      this.ws.on<FinalWeightSetPayload>(FINAL_WEIGHT_SET).subscribe((payload) => {
+        if (!payload || typeof payload.roundId !== 'string' || !payload.record || !payload.result) return;
+        this.handleFinalWeightSet(payload);
+      })
+    );
+
     // Issue list updated
     this.subscriptions.push(
       this.ws.on<{ issues: IssueItem[] }>('issue:list-updated').subscribe(({ issues }) => {
@@ -350,6 +393,66 @@ export class SessionStateService implements OnDestroy {
         this.toast.show('warning', 'You have been removed from the session');
       })
     );
+  }
+
+  private applyConfig(config: SessionConfiguration): void {
+    this._sessionConfig.set(config);
+    if (config.finalWeightEnabled !== true) this.clearAccuracy();
+  }
+
+  private clearAccuracy(): void {
+    this._latestAccuracy.set(null);
+    this.lastAnnouncedKey = null;
+  }
+
+  private handleFinalWeightSet({ roundId, record, result }: FinalWeightSetPayload): void {
+    const accuracy: LatestAccuracy = { roundId, record, result };
+    this._latestAccuracy.set(accuracy);
+
+    const round = this._currentRound();
+    if (round && round.id === roundId) {
+      this._currentRound.set({ ...round, finalWeight: record });
+    } else if (this._history().some((e) => e.roundId === roundId)) {
+      this._history.set(
+        this._history().map((e) => (e.roundId === roundId ? { ...e, finalWeight: record } : e))
+      );
+    }
+
+    const key = JSON.stringify([roundId, record.value, record.showFunniest]);
+    if (key === this.lastAnnouncedKey) return;
+    this.lastAnnouncedKey = key;
+    this.accuracyAnnounced.next(accuracy);
+  }
+
+  /** Rebuilds `latestAccuracy` from held state without announcing it. */
+  private restoreAccuracy(): void {
+    if (!this.finalWeightEnabled()) {
+      this.clearAccuracy();
+      return;
+    }
+    const round = this._currentRound();
+    let roundId: string | null = null;
+    let record: FinalWeightRecord | undefined;
+    let result: AccuracyResult | null = null;
+    if (round?.finalWeight) {
+      roundId = round.id;
+      record = round.finalWeight;
+      result = computeAccuracy(votesFromRound(round.selections, this._participants()), record);
+    } else {
+      const entry = this._history().find((e) => e.finalWeight !== undefined);
+      if (entry?.finalWeight) {
+        roundId = entry.roundId;
+        record = entry.finalWeight;
+        result = computeAccuracy(entry.participants, record);
+      }
+    }
+    if (roundId === null || !record || !result) {
+      this._latestAccuracy.set(null);
+      return;
+    }
+    this._latestAccuracy.set({ roundId, record, result });
+    // Restored state counts as already shown, so a later identical repeat stays silent.
+    this.lastAnnouncedKey = JSON.stringify([roundId, record.value, record.showFunniest]);
   }
 
   /**

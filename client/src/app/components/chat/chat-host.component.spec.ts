@@ -58,7 +58,10 @@ import {
 } from '../../testing/contrast';
 import { MOBILE_MEDIA, edgesPx, rulesOf, stylesFor, toPx } from '../../testing/declared-css';
 import { RetroBoardPageComponent } from '../retro-board/retro-board-page.component';
-import { SessionPokerPageComponent } from '../session-poker-page/session-poker-page.component';
+import {
+  FINAL_WEIGHT_PAGE_IMPORTS,
+  SessionPokerPageComponent,
+} from '../session-poker-page/session-poker-page.component';
 import { AVATAR_PALETTE, CHAT_NARROW_QUERY, chatPanelId } from './chat-format';
 import { ChatComposerComponent } from './chat-composer.component';
 import { ChatHostComponent } from './chat-host.component';
@@ -417,6 +420,8 @@ async function renderPokerPage(
     currentRound: signal<VotingRound | null>(null),
     participants: signal<User[]>([]),
     sessionConfig: signal<SessionConfiguration | null>(null),
+    finalWeightEnabled: signal(false),
+    latestAccuracy: signal(null),
     countdownActive: signal(false),
     currentUser: signal<User | null>(null),
     isRevealed: signal(false),
@@ -466,6 +471,7 @@ async function renderPokerPage(
         StubConnectionStatusComponent,
         StubVoteCalloutLayerComponent,
         StubModeratorNoteBalloonComponent,
+        ...FINAL_WEIGHT_PAGE_IMPORTS,
         ChatHostComponent,
       ],
     },

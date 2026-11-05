@@ -56,6 +56,7 @@ describe('SessionHistoryComponent', () => {
       metrics: signal(null).asReadonly(),
       history: historySignal.asReadonly(),
       currentUser: currentUserSignal.asReadonly(),
+      finalWeightEnabled: signal(false).asReadonly(),
     };
 
     mockWsService = {
@@ -339,6 +340,7 @@ describe('SessionHistoryComponent notes rendering', () => {
           useValue: {
             history: historySignal.asReadonly(),
             currentUser: signal<User | null>(null).asReadonly(),
+            finalWeightEnabled: signal(false).asReadonly(),
           },
         },
         {

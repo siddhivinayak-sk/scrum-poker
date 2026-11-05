@@ -112,7 +112,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { signal, WritableSignal, Component, input, output } from '@angular/core';
 import { vi, beforeEach, afterEach } from 'vitest';
-import { SessionPokerPageComponent } from './session-poker-page.component';
+import { FINAL_WEIGHT_PAGE_IMPORTS, SessionPokerPageComponent } from './session-poker-page.component';
 import { WebSocketService } from '../../services/websocket.service';
 import { SessionStateService } from '../../services/session-state.service';
 import { AuthService } from '../../services/auth.service';
@@ -322,6 +322,8 @@ describe('SessionPokerPageComponent (unit tests)', () => {
       currentRound: currentRoundSignal,
       participants: participantsSignal,
       sessionConfig: sessionConfigSignal,
+      finalWeightEnabled: signal(false),
+      latestAccuracy: signal(null),
       countdownActive: countdownActiveSignal,
       currentUser: currentUserSignal,
       isRevealed: isRevealedSignal,
@@ -379,6 +381,7 @@ describe('SessionPokerPageComponent (unit tests)', () => {
           StubConnectionStatusComponent,
           StubVoteCalloutLayerComponent,
           StubModeratorNoteBalloonComponent,
+          ...FINAL_WEIGHT_PAGE_IMPORTS,
           StubChatHostComponent,
         ],
       },

@@ -5,6 +5,7 @@ import {
   OnInit,
   OnDestroy,
   afterNextRender,
+  effect,
   inject,
   signal,
   computed,
@@ -30,6 +31,24 @@ import { ConnectionStatusComponent } from '../connection-status/connection-statu
 import { VoteCalloutLayerComponent } from '../vote-callout/vote-callout-layer.component';
 import { ModeratorNoteBalloonComponent } from '../moderator-notes/moderator-note-balloon.component';
 import { ChatHostComponent } from '../chat/chat-host.component';
+import {
+  FinalWeightDialogComponent,
+  type FinalWeightEditTarget,
+} from '../final-weight-dialog/final-weight-dialog.component';
+import { FinalWeightBalloonComponent } from '../final-weight-balloon/final-weight-balloon.component';
+import { FinalWeightHeaderButtonComponent } from '../final-weight-header-button/final-weight-header-button.component';
+import { FinalWeightLeaderboardButtonComponent } from '../final-weight-leaderboard-button/final-weight-leaderboard-button.component';
+import { FinalWeightLeaderboardDialogComponent } from '../final-weight-leaderboard-dialog/final-weight-leaderboard-dialog.component';
+
+/** Final weight components the page mounts; exported so specs that override imports keep them. */
+export const FINAL_WEIGHT_PAGE_IMPORTS = [
+  FinalWeightDialogComponent,
+  FinalWeightBalloonComponent,
+  FinalWeightHeaderButtonComponent,
+  FinalWeightLeaderboardButtonComponent,
+  FinalWeightLeaderboardDialogComponent,
+] as const;
+import { FinalWeightGateService } from '../../services/final-weight-gate.service';
 import { ConnectionState } from '@shared/types';
 import { BoardOverlayLayoutService } from '../../services/board-overlay-layout.service';
 import { SessionStateService } from '../../services/session-state.service';
@@ -62,6 +81,7 @@ import { EstimateExportService } from '../../services/estimate-export.service';
     VoteCalloutLayerComponent,
     ModeratorNoteBalloonComponent,
     ChatHostComponent,
+    ...FINAL_WEIGHT_PAGE_IMPORTS,
   ],
   template: `
     @if (sessionNotFound()) {
@@ -104,6 +124,11 @@ import { EstimateExportService } from '../../services/estimate-export.service';
                 (click)="onExportEstimates()"
               >⬇</button>
             }
+            <app-final-weight-header-button
+              [balloon]="finalWeightBalloon() ?? null"
+              (edit)="finalWeightEditTarget.set($event)"
+            />
+            <app-final-weight-leaderboard-button (openLeaderboard)="finalWeightLeaderboard()?.show()" />
             @if (isSessionOwner()) {
               <button
                 class="session-poker-page__end-btn"
@@ -275,6 +300,17 @@ import { EstimateExportService } from '../../services/estimate-export.service';
              .interaction-blocker wrapper, so a paused connection never makes a visible
              callout inert (R11.12). Rendered only in this session-found branch (R11.11). -->
         <app-vote-callout-layer [sessionId]="sessionId()" />
+
+        <!-- Final weight: one dialog (gate or edit mode) and one result balloon. Both are
+             position:fixed, so they do not affect layout or the callout layer's tab order. -->
+        @if (sessionState.finalWeightEnabled()) {
+          <app-final-weight-dialog
+            [edit]="finalWeightEditTarget()"
+            (closed)="finalWeightEditTarget.set(null)"
+          />
+          <app-final-weight-balloon />
+          <app-final-weight-leaderboard-dialog />
+        }
 
         <!-- End Session Confirmation Dialog -->
         @if (showEndSessionDialog()) {
@@ -912,6 +948,7 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly finalWeightGate = inject(FinalWeightGateService);
   private readonly wsService = inject(WebSocketService);
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
@@ -938,6 +975,17 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
   readonly showQrCode = signal<boolean>(false);
   readonly historyOverlayOpen = signal<boolean>(false);
   readonly showEndSessionDialog = signal<boolean>(false);
+
+  /** Edit-mode target of the final weight dialog, set by the header button; null when closed. */
+  readonly finalWeightEditTarget = signal<FinalWeightEditTarget | null>(null);
+
+  protected readonly finalWeightBalloon = viewChild(FinalWeightBalloonComponent);
+
+  protected readonly finalWeightLeaderboard = viewChild(FinalWeightLeaderboardDialogComponent);
+
+  private readonly closeFinalWeightEditWhenOff = effect(() => {
+    if (!this.sessionState.finalWeightEnabled()) this.finalWeightEditTarget.set(null);
+  });
 
   /**
    * Flipped once the `/exists` check resolves, which is the moment the page
@@ -1063,16 +1111,18 @@ export class SessionPokerPageComponent implements OnInit, OnDestroy {
     const id = this.sessionId();
     const token = this.authService.getToken();
     if (token && id) {
-      this.http.delete(this.basePath.getApiUrl(`/api/sessions/${id}`), {
-        headers: { Authorization: `Bearer ${token}` },
-      }).subscribe({
-        next: () => {
-          this.toastService.show('info', 'Session ended');
-          this.router.navigate(['/lobby']);
-        },
-        error: () => {
-          this.toastService.show('error', 'Failed to end session');
-        },
+      this.finalWeightGate.guardEndSession(() => {
+        this.http.delete(this.basePath.getApiUrl(`/api/sessions/${id}`), {
+          headers: { Authorization: `Bearer ${token}` },
+        }).subscribe({
+          next: () => {
+            this.toastService.show('info', 'Session ended');
+            this.router.navigate(['/lobby']);
+          },
+          error: () => {
+            this.toastService.show('error', 'Failed to end session');
+          },
+        });
       });
     }
   }

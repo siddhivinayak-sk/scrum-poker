@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { SessionConfiguration, resolveFunCallouts } from '../../../shared/types';
+import { SessionConfiguration, resolveFunCallouts, resolveFinalWeightEnabled } from '../../../shared/types';
 import { GameSession } from './game-session';
 
 /**
@@ -57,6 +57,10 @@ export class SessionRegistry {
     const session = new GameSession(sessionId, ownerId, {
       ...config,
       funCallouts: resolveFunCallouts(config.funCallouts),
+      // finalWeightEnabled is stored normalised only when present; absent stays absent.
+      ...(Object.prototype.hasOwnProperty.call(config, 'finalWeightEnabled')
+        ? { finalWeightEnabled: resolveFinalWeightEnabled(config.finalWeightEnabled) }
+        : {}),
     });
     this.sessions.set(sessionId, session);
 

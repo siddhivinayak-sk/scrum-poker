@@ -30,6 +30,7 @@ describe('StoryManagerComponent', () => {
       participants: signal([]).asReadonly(),
       selections: signal(new Map()).asReadonly(),
       isRevealed: isRevealedSignal.asReadonly(),
+      finalWeightEnabled: signal(false).asReadonly(),
       metrics: signal(null).asReadonly(),
       history: signal([]).asReadonly(),
       currentUser: currentUserSignal.asReadonly(),

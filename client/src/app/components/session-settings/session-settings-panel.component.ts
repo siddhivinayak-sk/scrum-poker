@@ -12,6 +12,7 @@ import {
   VotingSystemType,
   PermissionMode,
   resolveFunCallouts,
+  resolveFinalWeightEnabled,
 } from '@shared/types';
 
 @Component({
@@ -164,6 +165,21 @@ import {
                       <span class="toggle-text">Countdown animation</span>
                       <span class="toggle-description">
                         Show a 3-2-1 countdown before revealing cards
+                      </span>
+                    </label>
+
+                    <label class="toggle-label">
+                      <input
+                        type="checkbox"
+                        id="settings-finalWeightEnabled"
+                        formControlName="finalWeightEnabled"
+                        aria-label="Final weight and accuracy"
+                        (change)="onFieldChange()"
+                      />
+                      <span class="toggle-text">Final weight and accuracy</span>
+                      <span class="toggle-description">
+                        Moderators pick a final weight after cards are revealed, and the team sees
+                        whose estimate was closest
                       </span>
                     </label>
 
@@ -490,6 +506,7 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
             autoReveal: cfg.autoReveal,
             countdownAnimation: cfg.countdownAnimation,
             funCallouts: resolveFunCallouts(cfg.funCallouts),
+            finalWeightEnabled: resolveFinalWeightEnabled(cfg.finalWeightEnabled),
           },
           { emitEvent: false }
         );
@@ -508,6 +525,7 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
       autoReveal: [cfg?.autoReveal ?? false],
       countdownAnimation: [cfg?.countdownAnimation ?? false],
       funCallouts: [resolveFunCallouts(cfg?.funCallouts)],
+      finalWeightEnabled: [resolveFinalWeightEnabled(cfg?.finalWeightEnabled)],
     });
     this.previousVotingSystem = cfg?.votingSystem ?? 'fibonacci';
   }
@@ -555,6 +573,7 @@ export class SessionSettingsPanelComponent implements OnInit, OnDestroy {
       },
       autoReveal: formValue.autoReveal ?? false,
       countdownAnimation: formValue.countdownAnimation ?? false,
+      finalWeightEnabled: resolveFinalWeightEnabled(formValue.finalWeightEnabled),
     };
 
     // Only the true owner may send funCallouts; a non-owner moderator omits the key (R6.10).
