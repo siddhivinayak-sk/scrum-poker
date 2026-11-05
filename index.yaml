@@ -2,6 +2,18 @@ apiVersion: v1
 entries:
   scrum-poker:
   - apiVersion: v2
+    appVersion: 0.0.10
+    created: "2026-11-05T13:28:30.163603196Z"
+    description: Real-time collaborative planning poker and sprint retrospective tool
+      for agile teams, served from a single container.
+    digest: e2c2a2ad07dc3f8e2b93505fe010525957e90f90e466e8e16b28a9faecbe3364
+    kubeVersion: '>=1.19.0-0'
+    name: scrum-poker
+    type: application
+    urls:
+    - https://github.com/siddhivinayak-sk/scrum-poker/releases/download/scrum-poker-0.0.10/scrum-poker-0.0.10.tgz
+    version: 0.0.10
+  - apiVersion: v2
     appVersion: 0.0.9
     created: "2026-11-01T11:00:26.348825239Z"
     description: Real-time collaborative planning poker and sprint retrospective tool
@@ -37,4 +49,4 @@ entries:
     urls:
     - https://github.com/siddhivinayak-sk/scrum-poker/releases/download/scrum-poker-0.0.7/scrum-poker-0.0.7.tgz
     version: 0.0.7
-generated: "2026-11-01T11:00:26.348839296Z"
+generated: "2026-11-05T13:28:30.163618946Z"
